@@ -2002,10 +2002,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chatMessagesWrapper = document.getElementById('chat-messages-wrapper');
     const chatContainer = document.querySelector('.guided-chat-container');
 
+    // FAQ Answers Map
+    const faqAnswers = {
+        '1': 'Only authorized organizers and faculty members can add events by filling out the event form with details such as the title, date, time, venue, and description.',
+        '2': 'Users can submit a room reservation request through the system. The request will then be reviewed and approved by the appropriate APC office.',
+        '3': 'Students can view upcoming APC events through the event dashboard or calendar page in the platform.',
+        '4': 'Events are labeled as either required or optional to help students identify which activities they need to attend.',
+        '5': 'The system sends notifications and reminders for upcoming events, schedule changes, and important announcements.',
+        '6': 'Organizer/faculty users can view available and reserved venues through the room availability feature before submitting a reservation request.',
+        '7': 'Yes, authorized organizers and faculty members can update event details when necessary.',
+        '8': 'Users may contact the event organizer or wait for updated information through the platform.',
+        '9': 'Only authorized faculty members and approved event organizers are allowed to post and manage events.',
+        '10': 'Organizers can check schedules and room availability beforehand to help reduce overlapping events and conflicts.',
+        '11': 'The system will send notifications whenever there are updates to event schedules, venues, or other important details.',
+        '12': 'Yes, organizers may upload files, posters, or other related materials for participants to access.',
+        '15': 'Yes, the system is exclusive to APC students, faculty members, and authorized event organizers.'
+    };
+
     if (chatSuggestionBtns.length > 0 && chatMessagesWrapper) {
         chatSuggestionBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const questionText = btn.textContent;
+                const questionId = btn.getAttribute('data-question');
+                const answerText = faqAnswers[questionId] || 'I\'m not sure about that. Please try again.';
                 
                 // Hide empty state on first interaction
                 if (chatEmptyState) {
@@ -2027,7 +2046,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 botMsg.innerHTML = `
                     <div class="bot-icon"><img src="Ramsey.png" alt="Ramsey AI" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
                     <div class="message-bubble bot">
-                        Answer goes here <br><span style="font-size: 0.8em; color: var(--text-muted);">(Placeholder for logic integration)</span>
+                        ${answerText}
                     </div>
                 `;
                 chatMessagesWrapper.appendChild(botMsg);
