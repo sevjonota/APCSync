@@ -525,14 +525,15 @@ window.api = (() => {
             const description = String(payload?.description || payload?.notes || '').trim();
             const bookingId = payload?.bookingId ? String(payload.bookingId).trim() : null;
 
-            if (!title || !type || !date || !startTime || !endTime || !location || !description) {
+            const locationRequired = !isStudent(currentUser);
+            if (!title || !type || !date || !startTime || !endTime || (locationRequired && !location) || !description) {
                 throw createApiError('VALIDATION_ERROR', 'Missing required fields', {
                     title: title ? [] : ['Title is required'],
                     type: type ? [] : ['Type is required'],
                     date: date ? [] : ['Date is required'],
                     startTime: startTime ? [] : ['Start time is required'],
                     endTime: endTime ? [] : ['End time is required'],
-                    location: location ? [] : ['Location is required'],
+                    location: locationRequired ? (location ? [] : ['Location is required']) : [],
                     description: description ? [] : ['Description is required']
                 }, 400);
             }

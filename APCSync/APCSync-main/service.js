@@ -103,10 +103,10 @@ const service = (() => {
 
     const initialState = {
         user: {
-            id: 'local-user',
-            email: '',
+            id: 'u-student-001',
+            email: 'someone@student.apc.edu.ph',
             role: 'student',
-            name: 'Student Name'
+            name: 'Student User'
         },
         users: demoUsers,
         rooms: demoRooms,

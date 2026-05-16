@@ -89,7 +89,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bookingId: ev.bookingId || ev.booking_id || null,
                 date,
                 startTime: ev.startTime || ev.start_time,
-                endTime: ev.endTime || ev.end_time
+                endTime: ev.endTime || ev.end_time,
+                photos: eventPhotoCache[ev.id] || []
             };
         });
     }
@@ -344,6 +345,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const scheduleDetailsPane = document.getElementById('schedule-details-pane');
 
     const eventDetailsData = {};
+    const eventPhotoCache = {};
+    let selectedEventPhotos = [];
+
+    function loadPhotoCache() {
+        try {
+            const json = localStorage.getItem('apcsync.eventPhotoCache');
+            if (json) {
+                const parsed = JSON.parse(json);
+                if (parsed && typeof parsed === 'object') {
+                    Object.assign(eventPhotoCache, parsed);
+                }
+            }
+        } catch (err) {
+            console.warn('Unable to load saved event photos:', err);
+        }
+    }
+
+    function savePhotoCache() {
+        try {
+            localStorage.setItem('apcsync.eventPhotoCache', JSON.stringify(eventPhotoCache));
+        } catch (err) {
+            console.warn('Unable to save event photos:', err);
+        }
+    }
+
+    loadPhotoCache();
 
     function renderScheduleDetails(eventId) {
         const data = eventDetailsData[eventId];
@@ -365,10 +392,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Event Details</h4>
                     <p style="color: var(--text-secondary); line-height: 1.6;">${data.description}</p>
                 </div>
+                ${data.photos && data.photos.length ? `
+                    <div style="margin-top: 1.5rem;">
+                        <div class="photo-preview-grid">
+                            ${data.photos.map(photo => `<img src="${photo.src}" alt="${photo.name}" class="photo-preview-item">`).join('')}
+                        </div>
+                    </div>
+                ` : ''}
                 <div style="margin-top: 2rem; display: flex; gap: 0.5rem;">
                     <button class="btn-blue btn-sm" id="btn-edit-schedule-event" data-event-id="${eventId}">Edit</button>
                     <button class="btn-outline btn-sm" id="btn-delete-schedule-event" data-event-id="${eventId}">Delete</button>
                 </div>
+            </div>
+        `;
+    }
+
+    function renderScheduleDetailsPlaceholder() {
+        if (!scheduleDetailsPane) return;
+        scheduleDetailsPane.innerHTML = `
+            <div class="placeholder-content" style="border: none; background: transparent; text-align: center; padding: 2rem;">
+                <i class="far fa-eye mb-2" style="font-size: 2rem; color: var(--gold-dark);"></i>
+                <h3>Select an event</h3>
+                <p class="mt-2 text-muted">Click an event from the timeline to view its complete details and requirements.</p>
             </div>
         `;
     }
@@ -401,6 +446,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             closePersonalModal();
         }
     });
+
+    const addPePhotosButton = document.getElementById('btn-add-pe-photos');
+    const addPePhotosInput = document.getElementById('add-pe-photos');
+    const addPePhotosInfo = document.getElementById('add-pe-photos-info');
+
+    if (addPePhotosButton && addPePhotosInput) {
+        addPePhotosButton.addEventListener('click', () => addPePhotosInput.click());
+        addPePhotosInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files || []);
+            if (addPePhotosInfo) {
+                addPePhotosInfo.textContent = files.length
+                    ? `${files.length} photo${files.length === 1 ? '' : 's'} selected`
+                    : 'No photos selected.';
+            }
+        });
+    }
 
     scheduleDetailsPane.addEventListener('click', (e) => {
         if (e.target && e.target.id === 'btn-edit-personal-event') {
@@ -852,13 +913,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (errorMsg) errorMsg.style.display = 'none';
 
-        // Reset invite fields visibility based on default option
+        // Enforce student event type as personal and reset invite fields visibility
         if (eventTypeSelect && eventInviteFields) {
-            if (eventTypeSelect.value === 'personal') {
+            if (currentUser?.role === 'student') {
+                eventTypeSelect.value = 'personal';
+                eventTypeSelect.disabled = true;
+                eventInviteFields.classList.add('hidden');
+            } else if (eventTypeSelect.value === 'personal') {
                 eventInviteFields.classList.add('hidden');
             } else {
                 eventInviteFields.classList.remove('hidden');
             }
+        }
+
+        const locationLabel = document.querySelector('label[for="event-location"]');
+        const locationInput = document.getElementById('event-location');
+        if (locationInput) {
+            locationInput.required = currentUser?.role !== 'student';
+        }
+        if (locationLabel) {
+            locationLabel.innerHTML = currentUser?.role === 'student'
+                ? 'Location <span class="text-muted">(optional)</span>'
+                : 'Location <span class="text-danger">*</span>';
         }
 
         // Reset visibility scope to "everyone" and hide custom users
@@ -867,6 +943,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             customUsersDiv.classList.add('hidden');
             document.querySelectorAll('.event-custom-user-cb').forEach(cb => cb.checked = false);
         }
+
+        if (addEventPhotosInput) addEventPhotosInput.value = '';
+        if (addEventPhotosInfo) addEventPhotosInfo.textContent = 'No photos selected.';
+        if (eventPhotosPreview) eventPhotosPreview.innerHTML = '';
+        selectedEventPhotos = [];
 
         calendarEventModal.classList.remove('hidden');
         
@@ -895,6 +976,46 @@ document.addEventListener('DOMContentLoaded', async () => {
         calendarEventModal.classList.add('hidden');
         calendarEventModal.dataset.isEdit = 'false';
         delete calendarEventModal.dataset.editEventId;
+    }
+
+    const addEventPhotosButton = document.getElementById('btn-add-event-photos');
+    const addEventPhotosInput = document.getElementById('event-photos');
+    const addEventPhotosInfo = document.getElementById('event-photos-info');
+
+    const eventPhotosPreview = document.getElementById('event-photos-preview');
+
+    if (addEventPhotosButton && addEventPhotosInput) {
+        addEventPhotosButton.addEventListener('click', () => addEventPhotosInput.click());
+        addEventPhotosInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files || []);
+            selectedEventPhotos = [];
+
+            if (addEventPhotosInfo) {
+                addEventPhotosInfo.textContent = files.length
+                    ? `${files.length} photo${files.length === 1 ? '' : 's'} selected`
+                    : 'No photos selected.';
+            }
+
+            if (eventPhotosPreview) {
+                eventPhotosPreview.innerHTML = '';
+                if (files.length > 0) {
+                    files.forEach((file) => {
+                        const reader = new FileReader();
+                        reader.onload = (loadEvent) => {
+                            const dataUrl = loadEvent.target.result;
+                            selectedEventPhotos.push({ name: file.name, src: dataUrl });
+
+                            const img = document.createElement('img');
+                            img.src = dataUrl;
+                            img.alt = file.name;
+                            img.className = 'photo-preview-item';
+                            eventPhotosPreview.appendChild(img);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+            }
+        });
     }
 
     // Helper function to check and update room locking based on approved bookings
@@ -1079,7 +1200,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         visibleToList: Array.isArray(ev.visibleTo) ? ev.visibleTo : (typeof ev.visibleTo === 'string' ? [ev.visibleTo] : []),
                         date: dateStr,
                         startTime: ev.startTime || ev.start_time,
-                        endTime: ev.endTime || ev.end_time
+                        endTime: ev.endTime || ev.end_time,
+                        photos: eventPhotoCache[ev.id] || []
                     };
 
                     if (ev.type === 'required') {
@@ -1222,6 +1344,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Event Details</h4>
                         <p style="color: var(--text-secondary); line-height: 1.6;">${data.description}</p>
                     </div>
+                    ${data.photos && data.photos.length ? `
+                        <div style="margin-top: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: var(--text-primary);">Photos</h4>
+                            <div class="photo-preview-grid">
+                                ${data.photos.map(photo => `<img src="${photo.src}" alt="${photo.name}" class="photo-preview-item">`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
                     <div style="margin-top: 2rem; display: flex; gap: 0.5rem;">
                         <button class="btn-blue btn-sm" id="btn-edit-event-details" data-event-id="${eventId}">Edit</button>
                         <button class="btn-outline btn-sm" id="btn-delete-event-details" data-event-id="${eventId}">Delete</button>
@@ -1366,15 +1496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data && await showConfirm(`Delete event "${data.title}"?`)) {
                 try {
                     await api.deleteEvent(data.id);
-                    if (scheduleDetailsPane) {
-                        scheduleDetailsPane.innerHTML = `
-                            <div class="placeholder-content" style="border: none; background: transparent;">
-                                <i class="far fa-eye mb-2" style="font-size: 2rem; color: var(--gold-dark);"></i>
-                                <h3>Select an event</h3>
-                                <p class="mt-2 text-muted">Click an event from the timeline to view its complete details and requirements.</p>
-                            </div>
-                        `;
-                    }
+                    renderScheduleDetailsPlaceholder();
                     await refreshViews();
                     showNotice('Event deleted.', 'success');
                     addAppNotification('event.deleted', `Event deleted: ${data.title}`, { eventId: data.id });
@@ -1410,7 +1532,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const errorMsg = document.getElementById('event-error-msg');
 
         let isValid = true;
-        if (!titleInput.value.trim() || !dateInput.value || !typeInput.value || !startTimeInput.value || !endTimeInput.value || !locationInput.value.trim() || !notesInput.value.trim()) {
+        const locationMissing = !locationInput.value.trim() && currentUser?.role !== 'student';
+        if (!titleInput.value.trim() || !dateInput.value || !typeInput.value || !startTimeInput.value || !endTimeInput.value || locationMissing || !notesInput.value.trim()) {
             isValid = false;
         }
 
@@ -1438,7 +1561,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Get custom user list from checkboxes
         const customUserList = Array.from(document.querySelectorAll('.event-custom-user-cb:checked')).map(cb => cb.dataset.userId);
         const visibleScope = visibleScopeSelect ? visibleScopeSelect.value : 'everyone';
-        const visibilityPayload = parseVisibilityPayload(typeInput.value, visibleScope, customUserList);
+        const eventType = currentUser?.role === 'student' ? 'personal' : typeInput.value;
+        const visibilityPayload = parseVisibilityPayload(eventType, visibleScope, customUserList);
         
         // Get bookingId from either the form data attribute or from existing event data
         const isEdit = calendarEventModal?.dataset.isEdit === 'true';
@@ -1457,7 +1581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const newEvent = {
             title: title,
-            type: typeInput.value,
+            type: eventType,
             startTime: startTimeInput.value,
             endTime: endTimeInput.value,
             location: locationInput.value,
@@ -1480,6 +1604,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const ev = (createdOrUpdated && (createdOrUpdated.event || createdOrUpdated)) || null;
             if (ev) {
+                if (selectedEventPhotos.length > 0) {
+                    eventPhotoCache[ev.id] = selectedEventPhotos;
+                } else if (isEdit && eventId && eventPhotoCache[eventId]) {
+                    eventPhotoCache[ev.id] = eventPhotoCache[eventId];
+                }
+
+                savePhotoCache();
+
+                eventDetailsData[ev.id] = {
+                    ...(eventDetailsData[ev.id] || {}),
+                    photos: eventPhotoCache[ev.id] || []
+                };
+
                 addAppNotification(isEdit ? 'event.updated' : 'event.created', `${isEdit ? 'Event updated' : 'Event created'}: ${ev.title} (${ev.date} ${ev.startTime}-${ev.endTime})`, { eventId: ev.id });
             }
 
@@ -1559,6 +1696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (await showConfirm(`Delete event "${ev.title}"?`)) {
                 try {
                     await api.deleteEvent(ev.id);
+                    renderScheduleDetailsPlaceholder();
                     showNotice('Event deleted.', 'success');
                     await refreshViews();
                 } catch (err) {

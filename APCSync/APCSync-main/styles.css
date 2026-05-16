@@ -21,6 +21,7 @@
     --radius-md: 8px;
     --radius-sm: 6px;
     --transition: all 0.2s ease-in-out;
+    --light-blue: #3A7BD5;
 }
 
 * {
@@ -85,6 +86,21 @@ button {
     display: flex; align-items: center; justify-content: center; transition: var(--transition);
 }
 .btn-icon:hover { background: var(--border-color); color: var(--text-primary); }
+
+.photo-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+.photo-preview-item {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
 
 /* ================== LOGIN SCREEN ================== */
 .login-container { display: flex; height: 100vh; background: url('Login.png') center/cover no-repeat; }
@@ -425,7 +441,7 @@ h1 { font-size: 1.875rem; font-weight: 700; color: var(--text-primary); margin-b
 .schedule-layout { display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; padding: 1.5rem; }
 .schedule-list { display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto; padding-right: 0.5rem; border-right: 1px solid var(--border-color); }
 .schedule-event-pill { padding: 1.25rem; border-radius: var(--radius-md); cursor: pointer; transition: var(--transition); border: 1px solid transparent; }
-.schedule-event-pill.blue { background: var(--navy-blue); color: var(--white); box-shadow: var(--shadow-md); }
+.schedule-event-pill.blue { background: var(--light-blue); color: var(--white); box-shadow: var(--shadow-md); }
 .schedule-event-pill.outline { background: var(--white); border-color: var(--border-color); color: var(--text-primary); }
 .schedule-event-pill.outline:hover { border-color: var(--navy-blue); background: var(--navy-blue-light); }
 .schedule-pill-title { font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem; }

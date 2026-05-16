@@ -171,7 +171,7 @@
                     <a href="#" class="nav-item" data-target="calendar"><i class="far fa-calendar-alt"></i> Calendar</a>
                     <a href="#" class="nav-item" data-target="my-schedule"><i class="far fa-clock"></i> My Schedule</a>
                     <a href="#" class="nav-item" data-target="booking"><i class="fas fa-calendar-check"></i> Booking</a>
-                    <a href="#" class="nav-item" data-target="chatbot"><i class="fas fa-robot"></i> AI Assistant</a>
+                    <a href="#" class="nav-item" data-target="chatbot"><i class="fas fa-robot"></i> Assistant</a>
                     <a href="#" class="nav-item hidden" data-target="admin-approvals"><i class="fas fa-check-double"></i> Admin Approvals</a>
                 </div>
                 <div class="nav-group bottom-nav">
@@ -210,6 +210,7 @@
                             <i class="fas fa-exclamation-circle"></i> Required Events This Week
                         </div>
                         <div class="empty-state" style="padding: 1rem; border: none; background: transparent;">
+                            <i class="fas fa-check-circle" style="color: var(--gold);"></i>
                             <p>No required events for this week.</p>
                         </div>
                     </div>
@@ -223,10 +224,9 @@
                                 </div>
                             </div>
                             <div class="empty-state" id="dashboard-optional-events">
-                                <div>
-                                    <i class="far fa-calendar-times mb-2" style="font-size: 2rem;"></i>
-                                    <p>No optional events available this week.</p>
-                                </div>
+                                <i class="far fa-calendar-alt"></i>
+                                <h3>No Optional Events</h3>
+                                <p>Check back later for upcoming optional events you might be interested in.</p>
                             </div>
                         </div>
                         <div class="split-card">
@@ -239,7 +239,9 @@
                             </div>
                             <div id="dashboard-personal-schedule">
                                 <div class="empty-state" style="padding: 2rem; border: none; background: transparent;">
-                                    <p>Your schedule is clear.</p>
+                                    <i class="far fa-calendar-check"></i>
+                                    <h3>Schedule is Clear</h3>
+                                    <p>Your personal schedule is empty. Add some events to get started!</p>
                                 </div>
                             </div>
                         </div>
@@ -250,7 +252,7 @@
                         <div class="action-buttons">
                             <button class="btn-blue nav-link" data-target="calendar"><i class="far fa-calendar-alt mr-2"></i> View Full Calendar</button>
                             <button class="btn-outline" id="btn-add-calendar-event-dash"><i class="fas fa-plus mr-2"></i> Add Event</button>
-                            <button class="btn-gold nav-link" data-target="chatbot"><i class="fas fa-robot mr-2"></i> Ask AI Assistant</button>
+                            <button class="btn-gold nav-link" data-target="chatbot"><i class="fas fa-robot mr-2"></i> Ask Assistant</button>
                         </div>
                     </div>
                 </section>
@@ -298,6 +300,7 @@
                         </div>
                     </div>
                 </section>
+
 
                 <!-- 4. EVENT DETAILS -->
                 <section id="event-details" class="content-section">
@@ -782,7 +785,7 @@
                 <section id="chatbot" class="content-section">
                     <div class="chatbot-wrapper">
                         <div class="chat-header">
-                            <h1>RAMSEY <span class="badge">AI</span></h1>
+                            <h1>RAMSEY <span class="badge">Assistant</span></h1>
                             <p class="text-sm text-muted">Your institutional guided assistant</p>
                         </div>
                         
@@ -864,7 +867,7 @@
                             <input type="text" id="edit-pe-time" class="input-modern" placeholder="e.g., April 15, 3:00 PM">
                         </div>
                         <div class="form-group">
-                            <label>Location</label>
+                            <label>Location <span style="color: var(--text-muted); font-weight: normal;">(Optional)</span></label>
                             <input type="text" id="edit-pe-location" class="input-modern" placeholder="e.g., Library">
                         </div>
                     </div>
@@ -900,7 +903,7 @@
                             <input type="text" id="add-pe-time" class="input-modern" placeholder="e.g., May 10, 10:00 AM">
                         </div>
                         <div class="form-group">
-                            <label>Location</label>
+                            <label>Location <span style="color: var(--text-muted); font-weight: normal;">(Optional)</span></label>
                             <input type="text" id="add-pe-location" class="input-modern" placeholder="e.g., Room 101">
                         </div>
                     </div>
@@ -908,6 +911,14 @@
                     <div class="form-group">
                         <label for="add-pe-description">Description / Notes</label>
                         <textarea id="add-pe-description" rows="3" placeholder="e.g., Review Chapter 5 for finals."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Photos</label>
+                        <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center;">
+                            <input type="file" id="add-pe-photos" accept="image/*" multiple style="display:none;">
+                            <button type="button" class="btn-outline" id="btn-add-pe-photos"><i class="fas fa-image mr-2"></i>Add Photos</button>
+                            <span id="add-pe-photos-info" class="text-muted" style="font-size:0.95rem;">No photos selected.</span>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1016,6 +1027,15 @@
                         <div class="form-group">
                             <label for="event-notes">Notes <span class="text-danger">*</span></label>
                             <textarea id="event-notes" rows="3" placeholder="e.g., Discuss Q3 project milestones." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Photos</label>
+                            <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center;">
+                                <input type="file" id="event-photos" accept="image/*" multiple style="display:none;">
+                                <button type="button" class="btn-outline" id="btn-add-event-photos"><i class="fas fa-image mr-2"></i>Add Photos</button>
+                                <span id="event-photos-info" class="text-muted" style="font-size:0.95rem;">No photos selected.</span>
+                            </div>
+                            <div id="event-photos-preview" class="photo-preview-grid"></div>
                         </div>
                     </form>
                 </div>
