@@ -343,10 +343,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 5. Interactive Schedule Details Logic
     const scheduleDetailsPane = document.getElementById('schedule-details-pane');
+    const photoViewerModal = document.getElementById('photo-viewer-modal');
+    const photoViewerImage = document.getElementById('photo-viewer-image');
+    const closePhotoViewer = document.getElementById('close-photo-viewer');
 
     const eventDetailsData = {};
     const eventPhotoCache = {};
     let selectedEventPhotos = [];
+    let selectedDefaultPhotoKey = null;
+
+    // Default themes switched to photo backgrounds (placeholder public images).
+    // Replace these `src` values with local image paths if you prefer bundling assets.
+    const defaultEventPhotos = [
+        {
+            key: 'Theme1',
+            name: 'Theme1',
+            src: 'https://images.theconversation.com/files/45159/original/rptgtpxd-1396254731.jpg?ixlib=rb-4.1.0&q=45&auto=format&w=754&fit=clip'
+        },
+        {
+            key: 'Theme2',
+            name: 'Theme2',
+            src: 'https://static.vecteezy.com/system/resources/thumbnails/029/332/550/small/ai-generative-party-scene-from-a-festive-night-club-with-happy-people-and-friends-sony-a7s-realistic-image-free-photo.jpg'
+        },
+        {
+            key: 'Theme3',
+            name: 'Theme3',
+            src: 'https://images.squarespace-cdn.com/content/v1/581a64823e00be2eafea8d8e/1677285208122-IK7EZGUHWOCTRMDR0NWS/unsplash-image-LQ1t-8Ms5PY.jpg'
+        }
+    ];
 
     function loadPhotoCache() {
         try {
@@ -416,6 +440,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <p class="mt-2 text-muted">Click an event from the timeline to view its complete details and requirements.</p>
             </div>
         `;
+    }
+
+    function openPhotoViewer(src) {
+        if (!photoViewerModal || !photoViewerImage) return;
+        photoViewerImage.src = src;
+        photoViewerModal.classList.remove('hidden');
+    }
+
+    function closePhotoViewerModal() {
+        if (!photoViewerModal || !photoViewerImage) return;
+        photoViewerModal.classList.add('hidden');
+        photoViewerImage.src = '';
+    }
+
+    if (scheduleDetailsPane) {
+        scheduleDetailsPane.addEventListener('click', (e) => {
+            const targetImg = e.target.closest('.photo-preview-item');
+            if (!targetImg) return;
+            openPhotoViewer(targetImg.src);
+        });
+    }
+
+    if (closePhotoViewer) {
+        closePhotoViewer.addEventListener('click', closePhotoViewerModal);
     }
 
     // 6. Edit Personal Event Logic
@@ -753,7 +801,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 visibleEvents.forEach(ev => {
                     const pill = document.createElement('div');
                     pill.classList.add('cal-event-pill', ev.type);
-                    if(ev.type === 'required') {
+
+                    const eventPhotos = eventPhotoCache[ev.id];
+                    const hasPhotoBackground = eventPhotos && eventPhotos.length > 0;
+                    if (hasPhotoBackground) {
+                        pill.classList.add('has-photo-bg');
+                        pill.style.backgroundImage = `url('${eventPhotos[0].src}')`;
+                        pill.style.backgroundSize = 'cover';
+                        pill.style.backgroundPosition = 'center';
+                        pill.style.color = '#ffffff';
+                        pill.style.border = '1px solid rgba(255,255,255,0.45)';
+                        pill.style.textShadow = '0 1px 2px rgba(0,0,0,0.65)';
+                    } else if(ev.type === 'required') {
                         pill.style.background = '#fef0ef';
                         pill.style.color = '#e74c3c';
                         pill.style.borderLeft = '2px solid #e74c3c';
@@ -948,6 +1007,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (addEventPhotosInfo) addEventPhotosInfo.textContent = 'No photos selected.';
         if (eventPhotosPreview) eventPhotosPreview.innerHTML = '';
         selectedEventPhotos = [];
+        selectedDefaultPhotoKey = null;
+        clearDefaultPhotoSelection();
 
         calendarEventModal.classList.remove('hidden');
         
@@ -983,12 +1044,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addEventPhotosInfo = document.getElementById('event-photos-info');
 
     const eventPhotosPreview = document.getElementById('event-photos-preview');
+    const eventDefaultPhotosContainer = document.getElementById('event-default-photos');
+
+    function renderSelectedEventPhotoPreview() {
+        if (!eventPhotosPreview) return;
+        eventPhotosPreview.innerHTML = '';
+        selectedEventPhotos.forEach(photo => {
+            const img = document.createElement('img');
+            img.src = photo.src;
+            img.alt = photo.name;
+            img.className = 'photo-preview-item';
+            eventPhotosPreview.appendChild(img);
+        });
+    }
+
+    function clearDefaultPhotoSelection() {
+        selectedDefaultPhotoKey = null;
+        if (!eventDefaultPhotosContainer) return;
+        eventDefaultPhotosContainer.querySelectorAll('.default-photo-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+    }
+
+    function setSelectedDefaultPhoto(key) {
+        const selectedPhoto = defaultEventPhotos.find(photo => photo.key === key);
+        if (!selectedPhoto) return;
+
+        selectedDefaultPhotoKey = key;
+        selectedEventPhotos = [{ name: selectedPhoto.name, src: selectedPhoto.src }];
+        if (addEventPhotosInput) addEventPhotosInput.value = '';
+        if (addEventPhotosInfo) addEventPhotosInfo.textContent = `Default background selected: ${selectedPhoto.name}`;
+        renderSelectedEventPhotoPreview();
+
+        if (eventDefaultPhotosContainer) {
+            eventDefaultPhotosContainer.querySelectorAll('.default-photo-option').forEach(option => {
+                option.classList.toggle('selected', option.dataset.key === key);
+            });
+        }
+    }
+
+    function renderDefaultPhotoOptions() {
+        if (!eventDefaultPhotosContainer) return;
+
+        eventDefaultPhotosContainer.innerHTML = defaultEventPhotos.map(photo => {
+            return `<button type="button" class="default-photo-option" data-key="${photo.key}" data-name="${photo.name}" style="background-image:url('${photo.src}');"></button>`;
+        }).join('');
+
+        eventDefaultPhotosContainer.querySelectorAll('.default-photo-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const key = option.dataset.key;
+                setSelectedDefaultPhoto(key);
+            });
+        });
+    }
+
+    renderDefaultPhotoOptions();
 
     if (addEventPhotosButton && addEventPhotosInput) {
         addEventPhotosButton.addEventListener('click', () => addEventPhotosInput.click());
         addEventPhotosInput.addEventListener('change', (e) => {
             const files = Array.from(e.target.files || []);
             selectedEventPhotos = [];
+            selectedDefaultPhotoKey = null;
+            clearDefaultPhotoSelection();
 
             if (addEventPhotosInfo) {
                 addEventPhotosInfo.textContent = files.length
@@ -1004,12 +1122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         reader.onload = (loadEvent) => {
                             const dataUrl = loadEvent.target.result;
                             selectedEventPhotos.push({ name: file.name, src: dataUrl });
-
-                            const img = document.createElement('img');
-                            img.src = dataUrl;
-                            img.alt = file.name;
-                            img.className = 'photo-preview-item';
-                            eventPhotosPreview.appendChild(img);
+                            renderSelectedEventPhotoPreview();
                         };
                         reader.readAsDataURL(file);
                     });
@@ -1176,9 +1289,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (diffDays <= 7 || ev.dashboardVisible) upcomingCount++;
 
                     const eventKey = String(ev.id);
-                    let clickLink = ev.type === 'personal' ? `data-schedule-link="${eventKey}" style="cursor:pointer;"` : `data-event-details-link="${eventKey}" style="cursor:pointer;"`;
+                    
+                    // Check if event has photos and add background image styling
+                    const eventPhotos = eventPhotoCache[ev.id];
+                    const hasPhotoBackground = eventPhotos && eventPhotos.length > 0;
+                    const backgroundStyle = hasPhotoBackground ? `background-image: url('${eventPhotos[0].src}'); background-size: cover; background-position: center;` : '';
+                    const backgroundClass = hasPhotoBackground ? 'has-photo-bg' : '';
+                    const dataAttr = ev.type === 'personal' ? `data-schedule-link="${eventKey}"` : `data-event-details-link="${eventKey}"`;
+                    
                     let eventItemHtml = `
-                        <div class="schedule-item ${ev.type} mb-2" ${clickLink}>
+                        <div class="schedule-item ${ev.type} ${backgroundClass} mb-2" ${dataAttr} style="${backgroundStyle}cursor:pointer;">
                             <strong>${ev.title}</strong>
                             <small><i class="far fa-clock"></i> ${eventDateFormatted}, ${ev.startTime} - ${ev.endTime} | <i class="fas fa-map-marker-alt"></i> ${ev.location}</small>
                         </div>`;
@@ -1517,6 +1637,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('multi-event-modal')?.addEventListener('click', (e) => {
         if(e.target.id === 'multi-event-modal') e.target.classList.add('hidden');
+    });
+    document.getElementById('photo-viewer-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'photo-viewer-modal') closePhotoViewerModal();
     });
 
     async function saveEventHandler(e) {
