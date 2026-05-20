@@ -941,6 +941,14 @@
             </div>
         </div>
 
+        <!-- PHOTO VIEWER MODAL -->
+        <div id="photo-viewer-modal" class="modal-overlay hidden">
+            <div class="modal-content photo-viewer-content">
+                <button class="modal-close" id="close-photo-viewer"><i class="fas fa-times"></i></button>
+                <img id="photo-viewer-image" src="" alt="Event photo preview" />
+            </div>
+        </div>
+
         <!-- MULTI EVENT SELECT MODAL -->
         <div id="multi-event-modal" class="modal-overlay hidden">
             <div class="modal-content">
@@ -1036,6 +1044,11 @@
                                 <span id="event-photos-info" class="text-muted" style="font-size:0.95rem;">No photos selected.</span>
                             </div>
                             <div id="event-photos-preview" class="photo-preview-grid"></div>
+                            <div class="default-photos-section">
+                                <label>Default Themes</label>
+                                <div id="event-default-photos" class="default-photo-options"></div>
+                                <p class="text-muted" style="font-size:0.9rem; margin-top: 0.5rem;">Choose a default background if you don't have a photo to upload.</p>
+                            </div>
                         </div>
                     </form>
                 </div>
