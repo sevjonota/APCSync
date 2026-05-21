@@ -1,3 +1,19 @@
+    <!-- BOOKING DETAILS MODAL -->
+    <div id="booking-details-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3>Booking Request Details</h3>
+                <button class="modal-close" id="close-booking-details-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="booking-details-modal-body">
+                <!-- Populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <textarea id="booking-admin-comment" class="form-control" rows="2" placeholder="Comment (reason for approval/denial)"></textarea>
+                <button class="btn-blue mt-2" id="save-booking-admin-comment">Save Comment</button>
+            </div>
+        </div>
+    </div>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,21 +83,6 @@
                     <p><strong>Effective Date: May 8, 2026</strong></p>
                     <p>APCSync collects and processes personal data in compliance with the <strong>Data Privacy Act of 2012</strong> (Philippines) and <strong>GDPR</strong>. We process your data based on contractual necessity, legal obligations, and legitimate interests in system security and service improvement.</p>
                 </section>
-
-                <!-- ADMIN APPROVALS -->
-                <section id="admin-approvals" class="content-section">
-                    <div class="card">
-                        <div class="split-card-header">
-                            <h4>Admin Approvals</h4>
-                            <div>
-                                <button class="btn-outline" id="btn-refresh-approvals">Refresh</button>
-                            </div>
-                        </div>
-                        <div id="approvals-list">
-                            <p class="text-muted">No pending approvals.</p>
-                        </div>
-                    </div>
-                </section>
                 <section>
                     <h5>Information We Collect</h5>
                     <ul>
@@ -141,9 +142,11 @@
                     <i class="fas fa-bell bell-icon" id="btn-notifications" style="cursor: pointer;"></i>
                     <span class="notification-badge hidden">0</span>
                     <div id="notifications-dropdown" class="notifications-dropdown hidden">
-                        <div class="notifications-header">
-                            <h4>Notifications</h4>
-                            <button class="btn-clear-notifications">Mark all as read</button>
+                        <div class="notifications-header" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+                            <h4 style="margin: 0;">Notifications</h4>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-clear-notifications">Mark all as read</button>
+                            </div>
                         </div>
                         <div class="notifications-body" id="notifications-list">
                             <div class="empty-state" style="padding: 1rem; text-align: center; border: none;">
@@ -152,6 +155,7 @@
                         </div>
                         <div class="notifications-footer">
                             <a href="#">View All Notifications</a>
+                            <button class="btn-delete-all-notifications" style="color: #d32f2f; background: none; border: none; cursor: pointer; display: block; margin: 0.5rem auto 0 auto;">Delete all</button>
                         </div>
                     </div>
                 </div>
@@ -181,6 +185,20 @@
 
             <!-- CONTENT AREA -->
             <main class="content-area">
+                
+                <section id="admin-approvals" class="content-section">
+                    <div class="card">
+                        <div class="split-card-header">
+                            <h4>Request</h4>
+                            <div>
+                                <button class="btn-outline" id="btn-refresh-approvals">Refresh</button>
+                            </div>
+                        </div>
+                        <div id="approvals-list">
+                            <p class="text-muted">No pending approvals.</p>
+                        </div>
+                    </div>
+                </section>
 
                 <!-- 2. DASHBOARD -->
                 <section id="dashboard" class="content-section active">
@@ -453,6 +471,7 @@
                                 </div>
                                 <div class="booking-room-summary-footer">
                                     <button id="btn-clear-room-selection" class="btn-outline btn-sm" type="button">Clear Selection</button>
+                                    <button id="btn-cancel-booking" class="btn-outline btn-sm" type="button">Cancel Booking</button>
                                     <button id="btn-request-booking" class="btn-gold btn-sm" type="button">Request Booking</button>
                                 </div>
                             </div>

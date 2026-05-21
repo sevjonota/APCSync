@@ -767,6 +767,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? 'A pending request overlaps this slot, but it can still be requested.'
                 : 'This room is available for the selected slot.';
 
+        // Hide or show the Cancel Booking button based on status
+        const cancelBtn = document.getElementById('btn-cancel-booking');
+        if (cancelBtn) {
+            if (status === 'pending') {
+                cancelBtn.classList.remove('hidden');
+            } else {
+                cancelBtn.classList.add('hidden');
+            }
+        }
+
         bookingRoomSummary.classList.remove('hidden');
     }
 
@@ -2030,7 +2040,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const card = document.createElement('div');
                 card.className = 'alert-item';
                 card.innerHTML = `\
-                    <div style="flex:1">\
+                    <div style="flex:1; cursor:pointer;">\
                         <strong>${bk.roomId} — ${bk.date} ${bk.startTime}-${bk.endTime}</strong>\
                         <div class="text-muted">Requested by ${bk.requestedBy} — ${bk.purpose || ''}</div>\
                     </div>\
@@ -2039,7 +2049,55 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button class="btn-sm btn-blue" data-approve-action="approve" data-approve-id="${bk.id}">Approve</button>\
                     </div>\
                 `;
+                card.addEventListener('click', (e) => {
+                    // Only trigger if not clicking approve/reject
+                    if (e.target.closest('[data-approve-action]')) return;
+                    showBookingDetailsModal(bk);
+                });
                 list.appendChild(card);
+                // --- Booking Details Modal Logic ---
+                function showBookingDetailsModal(bk) {
+                    const modal = document.getElementById('booking-details-modal');
+                    const body = document.getElementById('booking-details-modal-body');
+                    const commentBox = document.getElementById('booking-admin-comment');
+                    if (!modal || !body) return;
+                    body.innerHTML = `
+                        <div style="margin-bottom:1rem;">
+                            <strong>Room:</strong> ${bk.roomId || ''}<br>
+                            <strong>Date:</strong> ${bk.date || ''}<br>
+                            <strong>Start Time:</strong> ${bk.startTime || ''}<br>
+                            <strong>End Time:</strong> ${bk.endTime || ''}<br>
+                            <strong>Requested By:</strong> ${bk.requestedBy || ''}<br>
+                            <strong>Purpose:</strong> ${bk.purpose || ''}<br>
+                        </div>
+                    `;
+                    if (commentBox) commentBox.value = bk.adminComment || '';
+                    modal.classList.remove('hidden');
+                    // Store current booking id for comment save
+                    modal.dataset.bookingId = bk.id;
+                }
+
+                // Close modal handler
+                document.getElementById('close-booking-details-modal')?.addEventListener('click', () => {
+                    document.getElementById('booking-details-modal').classList.add('hidden');
+                });
+
+                // Save comment handler (simulate API call)
+                document.getElementById('save-booking-admin-comment')?.addEventListener('click', async () => {
+                    const modal = document.getElementById('booking-details-modal');
+                    const commentBox = document.getElementById('booking-admin-comment');
+                    const bookingId = modal?.dataset.bookingId;
+                    if (!bookingId || !commentBox) return;
+                    try {
+                        // Simulate saving comment (replace with real API call if available)
+                        await api.updateBookingStatus(bookingId, { adminComment: commentBox.value });
+                        showNotice('Comment saved.', 'success');
+                        modal.classList.add('hidden');
+                        await renderAdminApprovals();
+                    } catch (err) {
+                        showNotice(getApiErrorMessage(err, 'Unable to save comment.'), 'error');
+                    }
+                });
             });
             container.appendChild(list);
         } catch (err) {
@@ -2261,6 +2319,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderNotifications();
             });
         }
+
+        // Delete all notifications button
+        const btnDeleteAllNotifications = notificationsDropdown.querySelector('.btn-delete-all-notifications');
+        if (btnDeleteAllNotifications) {
+            btnDeleteAllNotifications.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent dropdown from closing
+                try {
+                    if (window.service && typeof window.service.clearNotifications === 'function') {
+                        window.service.clearNotifications();
+                    } else {
+                        const key = 'apcsync.notifications';
+                        localStorage.setItem(key, '[]');
+                    }
+                } catch (err) {}
+                renderNotifications();
+            });
+        }
     }
 
     // 11. Booking Logic
@@ -2449,6 +2524,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         bookingRoomSummary?.addEventListener('click', (e) => {
             e.stopPropagation();
         });
+        // Add Cancel Booking button logic
+        const cancelBtn = document.getElementById('btn-cancel-booking');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                // Only allow if visible (status is pending)
+                if (cancelBtn.classList.contains('hidden')) return;
+                if (!currentBookingRoomElement) return;
+                const roomId = currentBookingRoomElement.dataset.roomId;
+                const slotValues = getBookingSlotValues();
+                try {
+                    cancelBtn.disabled = true;
+                    // Find the pending booking for this room/date/time
+                    const response = await api.listBookings({ status: 'pending' });
+                    const bookings = response.bookings || [];
+                    const booking = bookings.find(b => b.roomId === roomId && b.date === slotValues.date && b.startTime === slotValues.start_time && b.endTime === slotValues.end_time);
+                    if (!booking) {
+                        showNotice('No pending booking found for this room and slot.', 'error');
+                        cancelBtn.disabled = false;
+                        return;
+                    }
+                    await api.updateBookingStatus(booking.id, { action: 'cancel', decisionNote: 'Cancelled by user' });
+                    showNotice('Booking cancelled.', 'success');
+                    // Set room status to available and update UI
+                    currentBookingRoomElement.dataset.bookingStatus = 'available';
+                    currentBookingSlotStatus = 'available';
+                    updateBookingPopup(currentBookingRoomElement, 'available', null);
+                    await refreshViews();
+                } catch (error) {
+                    showNotice(getApiErrorMessage(error, 'Unable to cancel booking.'), 'error');
+                } finally {
+                    cancelBtn.disabled = false;
+                }
+            });
+        }
     }
 
     // --- Chatbot Functionality (Frontend Layout Only) ---

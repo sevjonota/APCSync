@@ -494,6 +494,12 @@ const service = (() => {
         return true;
     }
 
+    function clearNotifications() {
+        const stateLocal = getState();
+        stateLocal.notifications = [];
+        setState(stateLocal);
+        return true;
+    }
     return {
         getState,
         setState,
@@ -509,7 +515,8 @@ const service = (() => {
         // Notifications
         getNotifications,
         addNotification,
-        markAllNotificationsRead
+        markAllNotificationsRead,
+        clearNotifications
     };
 })();
 window.service = service;
