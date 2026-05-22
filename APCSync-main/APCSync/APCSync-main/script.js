@@ -211,11 +211,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sections = document.querySelectorAll('.content-section');
 
     function navigateTo(targetId) {
-        // Enforce role-based access control for 'booking'
         const user = currentUser;
+        if (user && user.role === 'admin' && ['calendar','my-schedule'].includes(targetId)) {
+            showNotice('Admin users do not access the student schedule pages.', 'error');
+            targetId = 'dashboard';
+        }
         if (targetId === 'booking' && user && user.role === 'student') {
-            showNotice("Room booking is restricted to faculty members only.", 'error');
-            targetId = 'dashboard'; // redirect to dashboard
+            showNotice('Room booking is restricted to faculty members only.', 'error');
+            targetId = 'dashboard';
         }
 
         // Update sidebar active states
@@ -261,6 +264,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
+        // Admin-specific nav: hide student-only pages for admin
+        const calendarNavItem = document.querySelector('.nav-item[data-target="calendar"]');
+        const scheduleNavItem = document.querySelector('.nav-item[data-target="my-schedule"]');
+        if (calendarNavItem) calendarNavItem.classList.toggle('hidden', role === 'admin');
+        if (scheduleNavItem) scheduleNavItem.classList.toggle('hidden', role === 'admin');
+
         // Add Event buttons: hide for admin
         const addBtns = [document.getElementById('btn-add-calendar-event'), document.getElementById('btn-add-calendar-event-dash')];
         addBtns.forEach(btn => {
@@ -277,6 +286,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (bookingMyBookingsPanel) {
             bookingMyBookingsPanel.classList.toggle('hidden', role !== 'faculty');
+        }
+
+        const activeSectionId = document.querySelector('.content-section.active')?.id;
+        if (role === 'admin' && ['calendar','my-schedule'].includes(activeSectionId)) {
+            navigateTo('dashboard');
         }
 
         // Event-type enforcement UI: students always see personal type
@@ -868,7 +882,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="booking-list-item" data-booking-id="${booking.id}">
                         <div>
                             <strong>${booking.roomId}</strong>
-                            <div class="text-muted">${booking.date} ${booking.startTime} - ${booking.endTime}</div>
+                            <div class="text-muted">${formatDateLabel(booking.date)} ${formatTimeLabel(booking.startTime)} - ${formatTimeLabel(booking.endTime)}</div>
                             <div class="text-muted">${booking.purpose || ''}</div>
                             ${booking.attachmentName ? `<div class="text-muted">Attachment: ${booking.attachmentName}</div>` : ''}
                         </div>
@@ -1346,22 +1360,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!date || !startTime || !endTime) {
             locationInput.disabled = true;
-            bookingStatusMsg.textContent = 'Select date and time to find available rooms.';
-            bookingStatusMsg.style.color = '#666';
-            bookingStatusMsg.style.backgroundColor = '#f5f5f5';
-            bookingStatusMsg.style.display = 'block';
             locationInput.value = '';
             locationInput.dataset.bookingId = '';
+            locationInput.dataset.roomId = '';
+            bookingStatusMsg.textContent = '';
+            bookingStatusMsg.style.display = 'none';
             return;
         }
 
         try {
             // Find approved bookings for this user/date/time
-            const approvedBookings = await api.listBookings();
+            const approvedBookingsResponse = await api.listBookings();
+            const approvedBookings = Array.isArray(approvedBookingsResponse)
+                ? approvedBookingsResponse
+                : (approvedBookingsResponse?.bookings || []);
             const loggedInUser = currentUser; // Use global currentUser
             
             // Filter for this user's approved bookings matching date/time
-            const matchingBookings = (approvedBookings.bookings || []).filter(booking => {
+            const matchingBookings = approvedBookings.filter(booking => {
                 const bookingDate = booking.date || booking.booking_date;
                 const bookingStart = booking.startTime || booking.start_time;
                 const bookingEnd = booking.endTime || booking.end_time;
@@ -1435,7 +1451,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    function updateDashboardCurrentTime() {
+        const dashboardTimeEl = document.getElementById('dashboard-current-time');
+        const dashboardDateEl = document.getElementById('dashboard-current-date');
+        if (!dashboardTimeEl && !dashboardDateEl) return;
+        const now = new Date();
+        if (dashboardTimeEl) {
+            dashboardTimeEl.textContent = `Local time: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+        }
+        if (dashboardDateEl) {
+            dashboardDateEl.textContent = `Local date: ${now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}`;
+        }
+    }
+
     async function renderDashboard(eventsByDate = null) {
+        updateDashboardCurrentTime();
+        if (currentUser && currentUser.role === 'admin') {
+            const bookings = await api.listBookings();
+            renderAdminDashboard(bookings);
+            return;
+        }
+
+        const adminDashboard = document.getElementById('admin-dashboard-container');
+        const studentDashboard = document.getElementById('student-dashboard-content');
+        if (adminDashboard) adminDashboard.classList.add('hidden');
+        if (studentDashboard) studentDashboard.classList.remove('hidden');
+
         const events = eventsByDate || await loadVisibleEvents();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -1917,7 +1958,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     photos: eventPhotoCache[ev.id] || []
                 };
 
-                addAppNotification(isEdit ? 'event.updated' : 'event.created', `${isEdit ? 'Event updated' : 'Event created'}: ${ev.title} (${ev.date} ${ev.startTime}-${ev.endTime})`, { eventId: ev.id });
+                addAppNotification(isEdit ? 'event.updated' : 'event.created', `${isEdit ? 'Event updated' : 'Event created'}: ${ev.title} (${formatDateLabel(ev.date)} ${formatTimeLabel(ev.startTime)} - ${formatTimeLabel(ev.endTime)})`, { eventId: ev.id });
             }
 
             await refreshViews();
@@ -2016,6 +2057,226 @@ document.addEventListener('DOMContentLoaded', async () => {
         return _saveEventHandler.call(this, e);
     };
 
+    // Booking Details Modal helper (used by admin approvals)
+    function showBookingDetailsModal(bk) {
+        const modal = document.getElementById('booking-details-modal');
+        const body = document.getElementById('booking-details-modal-body');
+        const commentBox = document.getElementById('booking-admin-comment');
+        if (!modal || !body) return;
+
+        const attachmentHtml = bk.attachmentName ? `<div><strong>Attachment:</strong> ${bk.attachmentName}</div>` : '';
+        const requestedByEmail = bk.requestedByEmail || bk.requested_by_email || '';
+        const createdAt = bk.createdAt || bk.created_at || '';
+
+        body.innerHTML = `
+            <div style="margin-bottom:1rem;">
+                <div><strong>Booking ID:</strong> ${bk.id || ''}</div>
+                <div><strong>Room:</strong> ${bk.roomId || bk.room_id || ''}</div>
+                <div><strong>Date:</strong> ${formatDateLabel(bk.date)}</div>
+                <div><strong>Time:</strong> ${formatTimeLabel(bk.startTime || bk.start_time)} - ${formatTimeLabel(bk.endTime || bk.end_time)}</div>
+                <div><strong>Requested By:</strong> ${bk.requestedBy || bk.requested_by || ''} ${requestedByEmail ? `(${requestedByEmail})` : ''}</div>
+                <div><strong>Purpose:</strong> ${bk.purpose || ''}</div>
+                ${attachmentHtml}
+                <div><strong>Requested At:</strong> ${formatTimestamp(createdAt)}</div>
+                <div><strong>Status:</strong> ${String(bk.status || '')}</div>
+            </div>
+        `;
+        if (commentBox) commentBox.value = bk.decisionNote || bk.decision_note || '';
+        modal.classList.remove('hidden');
+        modal.dataset.bookingId = bk.id;
+    }
+
+    // Formatting helpers
+    function formatTimeLabel(timeStr) {
+        if (!timeStr) return '';
+        // Expecting HH:MM (24-hour)
+        const parts = String(timeStr).split(':');
+        if (parts.length < 2) return timeStr;
+        let hh = parseInt(parts[0], 10);
+        const mm = parts[1];
+        if (Number.isNaN(hh)) return timeStr;
+        const suffix = hh >= 12 ? 'PM' : 'AM';
+        const hour12 = ((hh + 11) % 12) + 1; // convert 0->12
+        return `${hour12}:${mm} ${suffix}`;
+    }
+
+    function formatDateLabel(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr + 'T00:00:00');
+            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    function formatTimestamp(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        } catch (e) {
+            return iso;
+        }
+    }
+
+    function renderBookingVolumeChart(bookings, container) {
+        if (!container) return;
+        // Render a simple numeric summary instead of a graphical chart
+        const statusTotals = bookings.reduce((counts, booking) => {
+            const status = String(booking.status || 'unknown').toLowerCase();
+            counts[status] = (counts[status] || 0) + 1;
+            return counts;
+        }, {});
+
+        const requestsByRoom = bookings.reduce((acc, booking) => {
+            const room = booking.roomId || booking.room_id || 'Unknown';
+            acc[room] = (acc[room] || 0) + 1;
+            return acc;
+        }, {});
+
+        const statusHtml = Object.entries(statusTotals).map(([status, count]) => {
+            return `<div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px dashed rgba(0,0,0,0.04);"><strong style="text-transform:capitalize;">${status}</strong><span>${count}</span></div>`;
+        }).join('');
+
+        const topRooms = Object.entries(requestsByRoom)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 6)
+            .map(([room, count]) => `<div style="display:flex; justify-content:space-between; padding:0.25rem 0;"><span>${room}</span><strong>${count}</strong></div>`)
+            .join('') || '<div class="text-muted">No room data</div>';
+
+        container.innerHTML = `
+            <div style="margin-bottom:0.75rem; color: var(--text-secondary);">Numeric summary (demo mode does not affect actual bookings).</div>
+            <div style="display:flex; gap:1rem;">
+                <div style="flex:1; background:var(--bg-main); padding:0.75rem; border-radius:6px;">
+                    <h5 style="margin:0 0 0.5rem 0;">By Status</h5>
+                    ${statusHtml}
+                </div>
+                <div style="width:220px; background:var(--bg-main); padding:0.75rem; border-radius:6px;">
+                    <h5 style="margin:0 0 0.5rem 0;">Top Rooms</h5>
+                    ${topRooms}
+                </div>
+            </div>
+        `;
+    }
+
+    // Time-series SVG chart removed; using numeric summaries for stability.
+
+    function renderAdminDashboard(bookings = []) {
+        const adminDashboard = document.getElementById('admin-dashboard-container');
+        const studentDashboard = document.getElementById('student-dashboard-content');
+        if (!adminDashboard || !studentDashboard) return;
+
+        adminDashboard.classList.remove('hidden');
+        studentDashboard.classList.add('hidden');
+
+        const statsRow = document.getElementById('admin-stats-row');
+        const historyContainer = document.getElementById('admin-request-history');
+        const statsContainer = document.getElementById('admin-booking-stats');
+        if (!statsRow || !historyContainer || !statsContainer) return;
+
+        const activeBookings = Array.isArray(bookings) ? bookings : (bookings?.bookings || []);
+        const total = activeBookings.length;
+
+        const pending = activeBookings.filter(b => String(b.status).toLowerCase() === 'pending').length;
+        const approved = activeBookings.filter(b => String(b.status).toLowerCase() === 'approved').length;
+        const rejected = activeBookings.filter(b => String(b.status).toLowerCase() === 'rejected').length;
+        const cancelled = activeBookings.filter(b => String(b.status).toLowerCase() === 'cancelled').length;
+        const requestsByRoom = activeBookings.reduce((acc, booking) => {
+            const room = booking.roomId || booking.room_id || 'Unknown';
+            acc[room] = (acc[room] || 0) + 1;
+            return acc;
+        }, {});
+        const topRooms = Object.entries(requestsByRoom)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([room, count]) => `<div style="margin-bottom:0.5rem;"><strong>${room}</strong> &mdash; ${count} requests</div>`)
+            .join('');
+
+        const decisionTimes = activeBookings
+            .map(b => {
+                const created = new Date(b.createdAt || b.created_at || 0);
+                const decided = new Date(b.updatedAt || b.updated_at || b.decisionAt || b.decision_at || 0);
+                if (isNaN(created) || isNaN(decided) || decided <= created) return null;
+                return (decided - created) / 60000;
+            })
+            .filter(value => value !== null);
+        const avgDecision = decisionTimes.length ? `${(decisionTimes.reduce((sum, value) => sum + value, 0) / decisionTimes.length).toFixed(1)} min` : '0 min';
+
+        statsRow.innerHTML = `
+            <div class="stat-card blue">
+                <div class="stat-card-icon blue-icon"><i class="fas fa-list"></i></div>
+                <h4>Total Requests</h4>
+                <h2>${total}</h2>
+                <p>All room booking submissions</p>
+            </div>
+            <div class="stat-card gold">
+                <div class="stat-card-icon gold-icon"><i class="fas fa-hourglass-half"></i></div>
+                <h4>Pending</h4>
+                <h2>${pending}</h2>
+                <p>Awaiting admin review</p>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-card-icon green-icon"><i class="fas fa-check-circle"></i></div>
+                <h4>Approved</h4>
+                <h2>${approved}</h2>
+                <p>Confirmed reservations</p>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-card-icon red-icon"><i class="fas fa-times-circle"></i></div>
+                <h4>Rejected</h4>
+                <h2>${rejected}</h2>
+                <p>Declined requests</p>
+            </div>
+        `;
+
+        const recentRequests = activeBookings
+            .slice()
+            .sort((a, b) => new Date(b.createdAt || b.created_at || 0) - new Date(a.createdAt || a.created_at || 0))
+            .slice(0, 8);
+
+        historyContainer.innerHTML = recentRequests.length ? recentRequests.map(booking => {
+            return `
+                <div class="card" style="margin-bottom:1rem; padding:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+                        <strong>${booking.roomId || booking.room_id || 'Room'}</strong>
+                        <span style="font-size:0.9rem; color:var(--text-secondary);">${formatDateLabel(booking.date)} ${formatTimeLabel(booking.startTime || booking.start_time)} - ${formatTimeLabel(booking.endTime || booking.end_time)}</span>
+                    </div>
+                    <div style="margin-top:0.75rem; color:var(--text-secondary);">
+                        <div><strong>Status:</strong> ${String(booking.status || '').toUpperCase()}</div>
+                        <div><strong>Requested by:</strong> ${booking.requestedBy || booking.requested_by || 'Unknown'}</div>
+                        <div><strong>Purpose:</strong> ${booking.purpose || ''}</div>
+                    </div>
+                </div>
+            `;
+        }).join('') : '<div class="empty-state" style="padding:1rem;"><p>No reservation history available.</p></div>';
+
+        statsContainer.innerHTML = `
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <div class="mini-card">
+                    <h5>Avg Decision Time</h5>
+                    <p>${avgDecision}</p>
+                </div>
+                <div class="mini-card">
+                    <h5>Top Rooms</h5>
+                    ${topRooms || '<div>No data yet.</div>'}
+                </div>
+                <div class="mini-card">
+                    <h5>Cancelled</h5>
+                    <p>${cancelled}</p>
+                </div>
+            </div>
+        `;
+
+        const refreshBtn = document.getElementById('btn-refresh-admin-dashboard');
+        if (refreshBtn) {
+            refreshBtn.onclick = async () => {
+                const latestBookings = await api.listBookings();
+                renderAdminDashboard(latestBookings);
+            };
+        }
+    }
+
     // Admin Approvals UI: render pending bookings and handle approve/reject
     async function renderAdminApprovals() {
         const container = document.getElementById('approvals-list');
@@ -2041,8 +2302,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.className = 'alert-item';
                 card.innerHTML = `\
                     <div style="flex:1; cursor:pointer;">\
-                        <strong>${bk.roomId} — ${bk.date} ${bk.startTime}-${bk.endTime}</strong>\
-                        <div class="text-muted">Requested by ${bk.requestedBy} — ${bk.purpose || ''}</div>\
+                        <strong>${bk.roomId} &mdash; ${formatDateLabel(bk.date)} &middot; ${formatTimeLabel(bk.startTime || bk.start_time)} - ${formatTimeLabel(bk.endTime || bk.end_time)}</strong>\
+                        <div class="text-muted">Requested by ${bk.requestedBy} ${bk.requestedByEmail ? `(${bk.requestedByEmail})` : ''}</div>\
+                        <div class="text-muted">Purpose: ${bk.purpose || '<span class="text-muted">(none)</span>'}</div>\
+                        ${bk.attachmentName ? `<div class="text-muted">Attachment: ${bk.attachmentName}</div>` : ''}\
                     </div>\
                     <div style="display:flex; gap:0.5rem; align-items:center;">\
                         <button class="btn-sm btn-outline" data-approve-action="reject" data-approve-id="${bk.id}">Reject</button>\
@@ -2050,54 +2313,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>\
                 `;
                 card.addEventListener('click', (e) => {
-                    // Only trigger if not clicking approve/reject
                     if (e.target.closest('[data-approve-action]')) return;
                     showBookingDetailsModal(bk);
                 });
                 list.appendChild(card);
-                // --- Booking Details Modal Logic ---
-                function showBookingDetailsModal(bk) {
-                    const modal = document.getElementById('booking-details-modal');
-                    const body = document.getElementById('booking-details-modal-body');
-                    const commentBox = document.getElementById('booking-admin-comment');
-                    if (!modal || !body) return;
-                    body.innerHTML = `
-                        <div style="margin-bottom:1rem;">
-                            <strong>Room:</strong> ${bk.roomId || ''}<br>
-                            <strong>Date:</strong> ${bk.date || ''}<br>
-                            <strong>Start Time:</strong> ${bk.startTime || ''}<br>
-                            <strong>End Time:</strong> ${bk.endTime || ''}<br>
-                            <strong>Requested By:</strong> ${bk.requestedBy || ''}<br>
-                            <strong>Purpose:</strong> ${bk.purpose || ''}<br>
-                        </div>
-                    `;
-                    if (commentBox) commentBox.value = bk.adminComment || '';
-                    modal.classList.remove('hidden');
-                    // Store current booking id for comment save
-                    modal.dataset.bookingId = bk.id;
-                }
-
-                // Close modal handler
-                document.getElementById('close-booking-details-modal')?.addEventListener('click', () => {
-                    document.getElementById('booking-details-modal').classList.add('hidden');
-                });
-
-                // Save comment handler (simulate API call)
-                document.getElementById('save-booking-admin-comment')?.addEventListener('click', async () => {
-                    const modal = document.getElementById('booking-details-modal');
-                    const commentBox = document.getElementById('booking-admin-comment');
-                    const bookingId = modal?.dataset.bookingId;
-                    if (!bookingId || !commentBox) return;
-                    try {
-                        // Simulate saving comment (replace with real API call if available)
-                        await api.updateBookingStatus(bookingId, { adminComment: commentBox.value });
-                        showNotice('Comment saved.', 'success');
-                        modal.classList.add('hidden');
-                        await renderAdminApprovals();
-                    } catch (err) {
-                        showNotice(getApiErrorMessage(err, 'Unable to save comment.'), 'error');
-                    }
-                });
             });
             container.appendChild(list);
         } catch (err) {
@@ -2112,14 +2331,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         const action = btn.getAttribute('data-approve-action');
         if (!id || !action) return;
         if (!currentUser || currentUser.role !== 'admin') { showNotice('Not authorized', 'error'); return; }
+
+        // If admin clicked "Reject" on the card, open the modal to collect a reason
+        if (action === 'reject') {
+            try {
+                const res = await api.listBookings({ status: 'pending' });
+                const bookings = res.bookings || [];
+                const bk = bookings.find(b => b.id === id);
+                if (!bk) { showNotice('Booking not found.', 'error'); return; }
+                showBookingDetailsModal(bk);
+            } catch (err) {
+                showNotice(getApiErrorMessage(err, 'Unable to load booking.'), 'error');
+            }
+            return;
+        }
+
+        // Otherwise (approve), proceed immediately
         try {
-            // show loading on the clicked button(s)
             const approveBtns = document.querySelectorAll(`[data-approve-id="${id}"]`);
             approveBtns.forEach(b => { b.disabled = true; b.dataset.prevText = b.innerHTML; b.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...'; });
             const res = await api.updateBookingStatus(id, { action: action, decisionNote: `${action} by admin` });
             const bk = res.booking || res;
             showNotice(`Booking ${action}ed`, 'info');
-            addAppNotification(action === 'approve' ? 'booking.approved' : 'booking.rejected', `Booking ${action}ed: ${bk.roomId} ${bk.date} ${bk.startTime}-${bk.endTime}`, { bookingId: bk.id });
+            addAppNotification(action === 'approve' ? 'booking.approved' : 'booking.rejected', `Booking ${action}ed: ${bk.roomId} ${formatDateLabel(bk.date)} ${formatTimeLabel(bk.startTime)} - ${formatTimeLabel(bk.endTime)}`, { bookingId: bk.id });
             await renderAdminApprovals();
             await refreshViews();
             approveBtns.forEach(b => { b.disabled = false; if (b.dataset.prevText) b.innerHTML = b.dataset.prevText; });
@@ -2127,6 +2361,76 @@ document.addEventListener('DOMContentLoaded', async () => {
             showNotice(getApiErrorMessage(err), 'error');
         }
     });
+
+    // Booking details modal control buttons
+    const closeBookingDetailsBtn = document.getElementById('close-booking-details-modal');
+    const saveBookingAdminCommentBtn = document.getElementById('save-booking-admin-comment');
+    const bookingApproveBtn = document.getElementById('booking-approve-btn');
+    const bookingRejectBtn = document.getElementById('booking-reject-btn');
+
+    if (closeBookingDetailsBtn) {
+        closeBookingDetailsBtn.addEventListener('click', () => {
+            document.getElementById('booking-details-modal').classList.add('hidden');
+        });
+    }
+
+    if (saveBookingAdminCommentBtn) {
+        saveBookingAdminCommentBtn.addEventListener('click', async () => {
+            const modal = document.getElementById('booking-details-modal');
+            const bookingId = modal?.dataset.bookingId;
+            const commentBox = document.getElementById('booking-admin-comment');
+            if (!bookingId || !commentBox) return;
+            try {
+                await api.updateBookingStatus(bookingId, { decisionNote: commentBox.value });
+                showNotice('Comment saved.', 'success');
+                modal.classList.add('hidden');
+                await renderAdminApprovals();
+            } catch (err) {
+                showNotice(getApiErrorMessage(err, 'Unable to save comment.'), 'error');
+            }
+        });
+    }
+
+    if (bookingApproveBtn) {
+        bookingApproveBtn.addEventListener('click', async () => {
+            const modal = document.getElementById('booking-details-modal');
+            const bookingId = modal?.dataset.bookingId;
+            const commentBox = document.getElementById('booking-admin-comment');
+            if (!bookingId) return;
+            try {
+                await api.updateBookingStatus(bookingId, { action: 'approve', decisionNote: (commentBox?.value) || 'Approved by admin' });
+                showNotice('Booking approved.', 'success');
+                modal.classList.add('hidden');
+                await renderAdminApprovals();
+                await refreshViews();
+            } catch (err) {
+                showNotice(getApiErrorMessage(err, 'Unable to approve booking.'), 'error');
+            }
+        });
+    }
+
+    if (bookingRejectBtn) {
+        bookingRejectBtn.addEventListener('click', async () => {
+            const modal = document.getElementById('booking-details-modal');
+            const bookingId = modal?.dataset.bookingId;
+            const commentBox = document.getElementById('booking-admin-comment');
+            if (!bookingId) return;
+            const reason = commentBox?.value?.trim() || '';
+            try {
+                if (!reason) {
+                    const proceed = await showConfirm('No reason provided. Reject without a reason?');
+                    if (!proceed) return;
+                }
+                await api.updateBookingStatus(bookingId, { action: 'reject', decisionNote: reason || 'Rejected by admin' });
+                showNotice('Booking rejected.', 'info');
+                modal.classList.add('hidden');
+                await renderAdminApprovals();
+                await refreshViews();
+            } catch (err) {
+                showNotice(getApiErrorMessage(err, 'Unable to reject booking.'), 'error');
+            }
+        });
+    }
 
     const btnRefreshApprovals = document.getElementById('btn-refresh-approvals');
     if (btnRefreshApprovals) btnRefreshApprovals.addEventListener('click', renderAdminApprovals);
@@ -2287,6 +2591,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         renderNotifications();
     }
+
+    document.addEventListener('click', (e) => {
+        const toggle = e.target.closest?.('.collapsible-toggle');
+        if (!toggle) return;
+        const targetId = toggle.dataset.target;
+        if (!targetId) return;
+        const body = document.getElementById(targetId);
+        if (!body) return;
+        const card = body.closest('.collapsible-card');
+        if (!card) return;
+        const collapsed = card.classList.toggle('collapsed');
+        toggle.textContent = collapsed ? 'Expand' : 'Collapse';
+    });
 
     if (btnNotifications && notificationsDropdown) {
         btnNotifications.addEventListener('click', (e) => {
@@ -2480,7 +2797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 const createdBooking = bookingResp.booking || bookingResp;
                 showNotice('Booking request submitted.', 'success');
-                addAppNotification('booking.requested', `Booking requested for ${createdBooking.roomId} ${createdBooking.date} ${createdBooking.startTime}-${createdBooking.endTime}`, { bookingId: createdBooking.id });
+                addAppNotification('booking.requested', `Booking requested for ${createdBooking.roomId} ${formatDateLabel(createdBooking.date)} ${formatTimeLabel(createdBooking.startTime)} - ${formatTimeLabel(createdBooking.endTime)}`, { bookingId: createdBooking.id });
                 clearBookingRoomSelection();
                 clearBookingAttachmentSelection();
                 setBookingFormError('');
@@ -2509,7 +2826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const resp = await api.updateBookingStatus(bookingId, { action: 'cancel', decisionNote: 'Cancelled by faculty' });
                 const bk = resp.booking || resp;
                 showNotice('Booking cancelled.', 'success');
-                addAppNotification('booking.cancelled', `Booking cancelled: ${bk.roomId} ${bk.date} ${bk.startTime}-${bk.endTime}`, { bookingId: bk.id });
+                addAppNotification('booking.cancelled', `Booking cancelled: ${bk.roomId} ${formatDateLabel(bk.date)} ${formatTimeLabel(bk.startTime)} - ${formatTimeLabel(bk.endTime)}`, { bookingId: bk.id });
                 await refreshViews();
             } catch (error) {
                 showNotice(getApiErrorMessage(error, 'Unable to cancel booking.'), 'error');

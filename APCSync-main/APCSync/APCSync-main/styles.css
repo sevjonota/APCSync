@@ -373,11 +373,13 @@ h1 { font-size: 1.875rem; font-weight: 700; color: var(--text-primary); margin-b
 .stat-card.blue::before { background-color: var(--navy-blue); }
 .stat-card.red::before { background-color: var(--danger); }
 .stat-card.gold::before { background-color: var(--gold); }
+.stat-card.green::before { background-color: #2ecc71; }
 .stat-card-icon { position: absolute; top: 1.25rem; right: 1.25rem; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #ffffff; box-shadow: 0 8px 18px rgba(0,0,0,0.12); }
 .stat-card-icon i { font-size: 1rem; }
 .stat-card-icon.blue-icon { background: var(--navy-blue); }
 .stat-card-icon.red-icon { background: var(--danger); }
 .stat-card-icon.gold-icon { background: var(--gold); }
+.stat-card-icon.green-icon { background: #2ecc71; }
 .stat-card h4 { color: var(--text-secondary); font-size: 0.9375rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 .stat-card h2 { font-size: 2.5rem; font-weight: 700; color: var(--text-primary); margin: 0.5rem 0; line-height: 1; }
 .stat-card p { font-size: 1rem; color: var(--text-muted); }
@@ -394,6 +396,14 @@ h1 { font-size: 1.875rem; font-weight: 700; color: var(--text-primary); margin-b
 .split-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
 .split-card h4 { font-size: 1.125rem; font-weight: 600; color: var(--text-primary); }
 .split-card p.card-desc { font-size: 0.875rem; color: var(--text-secondary); }
+.collapsible-card { display: flex; flex-direction: column; height: auto; }
+.collapsible-card.collapsed { height: auto; min-height: auto; }
+.collapsible-card .collapsible-body { overflow: hidden; transition: max-height 0.25s ease, opacity 0.25s ease; max-height: 1000px; opacity: 1; }
+.collapsible-card.collapsed .collapsible-body { max-height: 0; opacity: 0; }
+.collapsible-card.collapsed .split-card-header { margin-bottom: 0; }
+.collapsible-card.collapsed .collapsible-body > div { padding-top: 0; }
+.collapsible-card .collapsible-body > div { padding-top: 0.5rem; }
+.collapsible-card .collapsible-toggle { min-width: 90px; }
 .empty-state { padding: 3rem 2rem; text-align: center; color: var(--text-muted); font-size: 0.9375rem; border: 2px dashed var(--border-color); border-radius: var(--radius-md); background: var(--bg-main); flex: 1; display: flex; align-items: center; justify-content: center; }
 .schedule-item { background: var(--white); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; border: 1px solid var(--border-color); transition: var(--transition); cursor: pointer; position: relative; padding-left: 1.5rem; }
 .schedule-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: var(--radius-md) 0 0 var(--radius-md); }

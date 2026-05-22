@@ -942,6 +942,13 @@ window.api = (() => {
                 booking.decision_note = decisionNote || null;
                 booking.decided_at = new Date().toISOString();
                 booking.updated_at = booking.decided_at;
+            } else if (!action && decisionNote) {
+                // Allow admins to save an administrative comment/note without changing booking status
+                if (!isAdmin(currentUser)) {
+                    throw createApiError('ONLY_ADMIN_CAN_SAVE_NOTE', 'Only admin can save notes on bookings', undefined, 403);
+                }
+                booking.decision_note = decisionNote || null;
+                booking.updated_at = new Date().toISOString();
             } else if (action === 'cancel') {
                 const requesterMatches = booking.requested_by === currentUser.id || booking.requestedBy === currentUser.id;
                 if (!requesterMatches && !isAdmin(currentUser)) {
