@@ -254,6 +254,19 @@
                                 <div id="admin-request-history"></div>
                             </div>
                         </div>
+
+                        <div id="admin-event-history-card" class="split-card collapsible-card expanded" style="margin-bottom:1.5rem;">
+                            <div class="split-card-header">
+                                <div>
+                                    <h4>Event History</h4>
+                                    <p class="card-desc">Recent event activity and scheduling updates.</p>
+                                </div>
+                                <button type="button" class="btn-outline btn-sm collapsible-toggle" data-target="admin-event-history-body">Collapse</button>
+                            </div>
+                            <div id="admin-event-history-body" class="collapsible-body">
+                                <div id="admin-event-history"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="student-dashboard-content">
@@ -496,6 +509,10 @@
                                     <input id="booking-purpose" type="text" class="form-control booking-input" placeholder="e.g., Faculty review session">
                                 </div>
                                 <div class="booking-field booking-field-wide">
+                                    <label for="booking-equipment">Equipment / resources needed *</label>
+                                    <textarea id="booking-equipment" class="form-control booking-input" rows="3" placeholder="e.g., Wi-Fi connection, tables/chairs, PCs, projector"></textarea>
+                                </div>
+                                <div class="booking-field booking-field-wide">
                                     <label for="booking-attachment-file">Attachment</label>
                                     <div class="booking-file-picker">
                                         <input id="booking-attachment-file" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,image/*">
@@ -521,6 +538,9 @@
                                 <div class="booking-room-summary-body">
                                     <p>Room: <span id="popup-room-type">None</span></p>
                                     <p>Details: <span id="popup-room-info">Pick a date and time, then choose a room. Pending requests do not block new bookings.</span></p>
+                                </div>
+                                <div id="booking-room-photo" class="booking-room-photo hidden">
+                                    <div id="booking-room-photo-gallery" class="photo-preview-grid"></div>
                                 </div>
                                 <div class="booking-room-summary-footer">
                                     <button id="btn-clear-room-selection" class="btn-outline btn-sm" type="button">Clear Selection</button>
@@ -571,7 +591,7 @@
                                 <div class="room" style="grid-column: 4; grid-row: 3;">208</div>
                                 <!-- column 5 is the gap -->
                                 <div class="room" style="grid-column: 6; grid-row: 3;">214</div>
-                                <div class="room" style="grid-column: 7; grid-row: 3;">216</div>
+                                <div class="room" data-room-label="216" style="grid-column: 7; grid-row: 3;">216</div>
                                 <div class="room" style="grid-column: 8; grid-row: 3;">218</div>
                             </div>
                         </div>
@@ -587,7 +607,7 @@
                                 </div>
                                 <div class="room booking-room" style="grid-column: 3; grid-row: 1;" data-room-id="rm-201">305</div>
                                 <div class="room" style="grid-column: 4; grid-row: 1;">307</div>
-                                <div class="room available booking-room" id="room-309" data-room-id="rm-202" style="grid-column: 5; grid-row: 1;">309</div>
+                                <div class="room available booking-room" id="room-309" data-room-id="rm-202" data-room-label="309" style="grid-column: 5; grid-row: 1;">309</div>
                                 <div class="room" style="grid-column: 6; grid-row: 1;">313</div>
                                 <div class="room" style="grid-column: 7; grid-row: 1;">315</div>
                                 <div class="room" style="grid-column: 8; grid-row: 1;">317</div>
@@ -677,9 +697,9 @@
                                 <div class="room" style="grid-column: 4; grid-row: 1;">607</div>
                                 <div class="room" style="grid-column: 5; grid-row: 1;"><span>609<br>A</span></div>
                                 <div class="room" style="grid-column: 6; grid-row: 1;"><span>609<br>B</span></div>
-                                <div class="room" style="grid-column: 7; grid-row: 1;"><span>609<br>C</span></div>
+                                <div class="room" data-room-label="609C" style="grid-column: 7; grid-row: 1;"><span>609<br>C</span></div>
                                 <div class="room" style="grid-column: 8; grid-row: 1;">613</div>
-                                <div class="room" style="grid-column: 9; grid-row: 1;">615</div>
+                                <div class="room" data-room-label="615" style="grid-column: 9; grid-row: 1;">615</div>
                                 <div class="room" style="grid-column: 10; grid-row: 1;">617</div>
                                 
                                 <!-- Hallway -->

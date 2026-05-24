@@ -244,6 +244,7 @@ window.api = (() => {
         const requestedByEmail = bookingData.requestedByEmail ?? bookingData.requested_by_email ?? null;
         const startTime = bookingData.startTime ?? bookingData.start_time ?? null;
         const endTime = bookingData.endTime ?? bookingData.end_time ?? null;
+        const equipment = bookingData.equipment ?? null;
         const attachmentName = bookingData.attachmentName ?? bookingData.attachment_name ?? null;
         const decidedBy = bookingData.decidedBy ?? bookingData.decided_by ?? null;
         const decidedAt = bookingData.decidedAt ?? bookingData.decided_at ?? null;
@@ -264,6 +265,7 @@ window.api = (() => {
             start_time: startTime,
             endTime,
             end_time: endTime,
+            equipment,
             attachmentName,
             attachment_name: attachmentName,
             decidedBy,
@@ -825,16 +827,18 @@ window.api = (() => {
             const endTime = String(payload?.endTime || payload?.end_time || '').trim();
             const roomId = String(payload?.roomId || payload?.room_id || '').trim();
             const purpose = String(payload?.purpose || '').trim();
+            const equipment = String(payload?.equipment || '').trim();
             const attachmentName = String(payload?.attachmentName || payload?.attachment_name || '').trim();
             const eventId = String(payload?.eventId || payload?.event_id || '').trim() || null;
 
-            if (!date || !startTime || !endTime || !roomId || !purpose) {
+            if (!date || !startTime || !endTime || !roomId || !purpose || !equipment) {
                 throw createApiError('VALIDATION_ERROR', 'Missing required fields', {
                     date: date ? [] : ['Date is required'],
                     startTime: startTime ? [] : ['Start time is required'],
                     endTime: endTime ? [] : ['End time is required'],
                     roomId: roomId ? [] : ['Room ID is required'],
-                    purpose: purpose ? [] : ['Purpose is required']
+                    purpose: purpose ? [] : ['Purpose is required'],
+                    equipment: equipment ? [] : ['Equipment is required']
                 }, 400);
             }
 
@@ -858,6 +862,7 @@ window.api = (() => {
                 start_time: startTime,
                 end_time: endTime,
                 purpose,
+                equipment: equipment || null,
                 attachment_name: attachmentName || null,
                 status: 'pending',
                 decided_by: null,

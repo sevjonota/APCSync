@@ -566,6 +566,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookingStartTimeField = document.getElementById('booking-start-time');
     const bookingEndTimeField = document.getElementById('booking-end-time');
     const bookingPurposeField = document.getElementById('booking-purpose');
+    const bookingEquipmentField = document.getElementById('booking-equipment');
     const bookingAttachmentFileInput = document.getElementById('booking-attachment-file');
     const bookingAttachmentButton = document.getElementById('booking-attachment-button');
     const bookingAttachmentField = document.getElementById('booking-attachment-name');
@@ -583,8 +584,82 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookingRoomStatusEl = document.getElementById('popup-room-status');
     const bookingRoomInfoEl = document.getElementById('popup-room-info');
     const bookingRoomSummary = document.getElementById('booking-room-summary');
+    const bookingRoomPhoto = document.getElementById('booking-room-photo');
+    const bookingRoomPhotoGallery = document.getElementById('booking-room-photo-gallery');
     const bookingMapContainer = document.querySelector('.booking-map-container');
     
+    const ROOM_PHOTO_MAP = {
+        '615': [
+            {
+                src: '../png/615a.png',
+                alt: 'Room 615 front view',
+                
+            },
+            {
+                src: '../png/615b.png',
+                alt: 'Room 615 rear view',
+                
+            }
+        ],
+        '609c': [
+            {
+                src: '../png/609Ca.png',
+                alt: 'Room 609C layout',
+                
+            },
+            {
+                src: '../png/609Cb.png',
+                alt: 'Room 609C side view',
+                
+            }
+        ],
+        '309': [
+            {
+                src: '../png/309a.png',
+                alt: 'Room 309 overview',
+                
+            },
+            {
+                src: '../png/309b.png',
+                alt: 'Room 309 seating view',
+                
+            }
+        ],
+        '216': [
+            {
+                src: '../png/216a.png',
+                alt: 'Room 216 overview',
+                
+            },
+            {
+                src: '../png/216b.png',
+                alt: 'Room 216 lecture view',
+                
+            }
+        ]
+    };
+
+    function normalizeRoomLabel(roomLabel) {
+        return String(roomLabel || '')
+            .replace(/\s+/g, '')
+            .replace(/[^a-z0-9]/gi, '')
+            .toLowerCase();
+    }
+
+    function getRoomLabelForElement(roomElement) {
+        if (!roomElement) return '';
+        const datasetLabel = String(roomElement.dataset?.roomLabel || '').trim();
+        if (datasetLabel) {
+            return datasetLabel;
+        }
+        return String(roomElement.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function getRoomPhotosForLabel(roomLabel) {
+        const normalized = normalizeRoomLabel(roomLabel);
+        return ROOM_PHOTO_MAP[normalized] || [];
+    }
+
     // Define restricted room labels (case-insensitive matching)
     // Note: includes typo "documentaion" as it appears in HTML
     const RESTRICTED_ROOM_LABELS = new Set([
@@ -770,7 +845,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!bookingRoomSummary || !bookingRoomNameEl || !bookingRoomTypeEl || !bookingRoomStatusEl || !bookingRoomInfoEl) return;
 
         const roomId = roomElement?.dataset?.roomId || '';
-        const roomLabel = roomElement?.textContent?.replace(/\s+/g, ' ').trim() || 'Room';
+        const roomLabel = getRoomLabelForElement(roomElement) || 'Room';
         bookingRoomNameEl.textContent = roomLabel;
         bookingRoomTypeEl.textContent = roomRecord?.name || roomId || 'Selected room';
         bookingRoomStatusEl.className = status === 'approved' ? 'status-booked' : status === 'pending' ? 'status-pending' : 'status-available';
@@ -780,6 +855,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             : status === 'pending'
                 ? 'A pending request overlaps this slot, but it can still be requested.'
                 : 'This room is available for the selected slot.';
+
+        const roomPhotos = getRoomPhotosForLabel(roomLabel).slice(0, 2);
+        if (bookingRoomPhoto && bookingRoomPhotoGallery) {
+            if (roomPhotos.length > 0) {
+                bookingRoomPhoto.classList.remove('hidden');
+                bookingRoomPhotoGallery.innerHTML = roomPhotos.map((photo, index) => `
+                    <img src="${photo.src}" alt="${photo.alt || `${roomLabel} photo ${index + 1}`}" class="room-gallery-item">
+                `).join('');
+            } else {
+                bookingRoomPhoto.classList.add('hidden');
+                bookingRoomPhotoGallery.innerHTML = '';
+            }
+        }
 
         // Hide or show the Cancel Booking button based on status
         const cancelBtn = document.getElementById('btn-cancel-booking');
@@ -792,6 +880,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         bookingRoomSummary.classList.remove('hidden');
+    }
+
+    if (bookingRoomPhotoGallery) {
+        bookingRoomPhotoGallery.addEventListener('click', (e) => {
+            const clickedImage = e.target.closest('.room-gallery-item');
+            if (!clickedImage) return;
+            openPhotoViewer(clickedImage.src);
+        });
     }
 
     function isBlockingBookingStatus(status) {
@@ -884,6 +980,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <strong>${booking.roomId}</strong>
                             <div class="text-muted">${formatDateLabel(booking.date)} ${formatTimeLabel(booking.startTime)} - ${formatTimeLabel(booking.endTime)}</div>
                             <div class="text-muted">${booking.purpose || ''}</div>
+                            ${booking.equipment ? `<div class="text-muted">Equipment: ${booking.equipment}</div>` : ''}
                             ${booking.attachmentName ? `<div class="text-muted">Attachment: ${booking.attachmentName}</div>` : ''}
                         </div>
                         <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
@@ -2162,7 +2259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Time-series SVG chart removed; using numeric summaries for stability.
 
-    function renderAdminDashboard(bookings = []) {
+    async function renderAdminDashboard(bookings = []) {
         const adminDashboard = document.getElementById('admin-dashboard-container');
         const studentDashboard = document.getElementById('student-dashboard-content');
         if (!adminDashboard || !studentDashboard) return;
@@ -2172,8 +2269,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const statsRow = document.getElementById('admin-stats-row');
         const historyContainer = document.getElementById('admin-request-history');
+        const eventHistoryContainer = document.getElementById('admin-event-history');
         const statsContainer = document.getElementById('admin-booking-stats');
-        if (!statsRow || !historyContainer || !statsContainer) return;
+        if (!statsRow || !historyContainer || !eventHistoryContainer || !statsContainer) return;
 
         const activeBookings = Array.isArray(bookings) ? bookings : (bookings?.bookings || []);
         const total = activeBookings.length;
@@ -2246,10 +2344,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div><strong>Status:</strong> ${String(booking.status || '').toUpperCase()}</div>
                         <div><strong>Requested by:</strong> ${booking.requestedBy || booking.requested_by || 'Unknown'}</div>
                         <div><strong>Purpose:</strong> ${booking.purpose || ''}</div>
+                        ${booking.equipment ? `<div><strong>Equipment:</strong> ${booking.equipment}</div>` : ''}
                     </div>
                 </div>
             `;
         }).join('') : '<div class="empty-state" style="padding:1rem;"><p>No reservation history available.</p></div>';
+
+        const eventsResponse = await api.listEvents();
+        const adminEvents = (eventsResponse?.events || []).slice();
+        const recentEvents = adminEvents
+            .sort((a, b) => {
+                const leftDate = new Date(`${a.date}T${a.startTime || a.start_time || '00:00'}:00`);
+                const rightDate = new Date(`${b.date}T${b.startTime || b.start_time || '00:00'}:00`);
+                return rightDate - leftDate;
+            })
+            .slice(0, 6);
+
+        eventHistoryContainer.innerHTML = recentEvents.length ? recentEvents.map(event => {
+            const eventDate = formatDateLabel(event.date);
+            const eventTime = `${formatTimeLabel(event.startTime || event.start_time)} - ${formatTimeLabel(event.endTime || event.end_time)}`;
+            return `
+                <div class="card" style="margin-bottom:1rem; padding:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+                        <strong>${event.title || 'Untitled event'}</strong>
+                        <span style="font-size:0.9rem; color:var(--text-secondary);">${eventDate} ${eventTime}</span>
+                    </div>
+                    <div style="margin-top:0.75rem; color:var(--text-secondary);">
+                        <div><strong>Location:</strong> ${event.location || 'TBD'}</div>
+                        <div><strong>Type:</strong> ${event.type || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+        }).join('') : '<div class="empty-state" style="padding:1rem;"><p>No recent event history available.</p></div>';
 
         statsContainer.innerHTML = `
             <div style="display:flex; gap:1rem; flex-wrap:wrap;">
@@ -2778,6 +2904,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
+            const equipment = bookingEquipmentField?.value.trim() || '';
+            if (!equipment) {
+                setBookingFormError('Specify the hardware or equipment needed for the booking.');
+                showNotice('Please list the equipment or resources needed.', 'error');
+                return;
+            }
+
             if (isBlockingBookingStatus(currentBookingSlotStatus)) {
                 setBookingFormError('That room is already booked for the selected slot. Choose another room or time.');
                 showNotice('That room is unavailable for the selected slot.', 'error');
@@ -2792,6 +2925,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     start_time: slotValues.start_time,
                     end_time: slotValues.end_time,
                     purpose,
+                    equipment,
                     attachment_name: attachmentName,
                     event_id: null
                 });
