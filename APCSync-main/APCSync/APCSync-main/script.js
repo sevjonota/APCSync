@@ -324,6 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             appWrapper.classList.remove('hidden');
             appWrapper.classList.add('active');
             await refreshViews();
+            startDashboardClock();
             navigateTo('dashboard');
         } catch (error) {
             showNotice(getApiErrorMessage(error, 'Unable to sign in.'), 'error');
@@ -334,6 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
 
         await api.logout();
+        stopDashboardClock();
         currentUser = null;
         applyRoleUi('student');
         const profileNameEl = document.getElementById('user-profile-name');
@@ -1553,11 +1555,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         const dashboardDateEl = document.getElementById('dashboard-current-date');
         if (!dashboardTimeEl && !dashboardDateEl) return;
         const now = new Date();
+
+        // Use Manila timezone for display (Philippine Time - PHT, UTC+8)
+        const timeZone = 'Asia/Manila';
+        let manilaTime;
+        let manilaDate;
+        try {
+            manilaTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone });
+            manilaDate = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', timeZone });
+        } catch (err) {
+            // Fallback if timezone formatting isn't supported
+            manilaTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            manilaDate = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
         if (dashboardTimeEl) {
-            dashboardTimeEl.textContent = `Local time: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+            dashboardTimeEl.textContent = `Philippine Time (PHT): ${manilaTime}`;
         }
         if (dashboardDateEl) {
-            dashboardDateEl.textContent = `Local date: ${now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}`;
+            dashboardDateEl.textContent = `${manilaDate}`;
+        }
+    }
+
+    // Live dashboard clock control
+    let dashboardClockInterval = null;
+    function startDashboardClock() {
+        try {
+            if (dashboardClockInterval) return; // already running
+            updateDashboardCurrentTime();
+            dashboardClockInterval = setInterval(updateDashboardCurrentTime, 1000);
+        } catch (err) {
+            console.warn('Unable to start dashboard clock', err);
+        }
+    }
+
+    function stopDashboardClock() {
+        if (dashboardClockInterval) {
+            clearInterval(dashboardClockInterval);
+            dashboardClockInterval = null;
         }
     }
 
@@ -2325,9 +2360,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const statsRow = document.getElementById('admin-stats-row');
         const historyContainer = document.getElementById('admin-request-history');
-        const eventHistoryContainer = document.getElementById('admin-event-history');
         const statsContainer = document.getElementById('admin-booking-stats');
-        if (!statsRow || !historyContainer || !eventHistoryContainer || !statsContainer) return;
+        if (!statsRow || !historyContainer || !statsContainer) return;
 
         const activeBookings = Array.isArray(bookings) ? bookings : (bookings?.bookings || []);
         const total = activeBookings.length;
@@ -2405,33 +2439,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
         }).join('') : '<div class="empty-state" style="padding:1rem;"><p>No reservation history available.</p></div>';
-
-        const eventsResponse = await api.listEvents();
-        const adminEvents = (eventsResponse?.events || []).slice();
-        const recentEvents = adminEvents
-            .sort((a, b) => {
-                const leftDate = new Date(`${a.date}T${a.startTime || a.start_time || '00:00'}:00`);
-                const rightDate = new Date(`${b.date}T${b.startTime || b.start_time || '00:00'}:00`);
-                return rightDate - leftDate;
-            })
-            .slice(0, 6);
-
-        eventHistoryContainer.innerHTML = recentEvents.length ? recentEvents.map(event => {
-            const eventDate = formatDateLabel(event.date);
-            const eventTime = `${formatTimeLabel(event.startTime || event.start_time)} - ${formatTimeLabel(event.endTime || event.end_time)}`;
-            return `
-                <div class="card" style="margin-bottom:1rem; padding:1rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
-                        <strong>${event.title || 'Untitled event'}</strong>
-                        <span style="font-size:0.9rem; color:var(--text-secondary);">${eventDate} ${eventTime}</span>
-                    </div>
-                    <div style="margin-top:0.75rem; color:var(--text-secondary);">
-                        <div><strong>Location:</strong> ${event.location || 'TBD'}</div>
-                        <div><strong>Type:</strong> ${event.type || 'N/A'}</div>
-                    </div>
-                </div>
-            `;
-        }).join('') : '<div class="empty-state" style="padding:1rem;"><p>No recent event history available.</p></div>';
 
         statsContainer.innerHTML = `
             <div style="display:flex; gap:1rem; flex-wrap:wrap;">
@@ -2666,6 +2673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateFilterButtonLabel();
     if (hasSession) {
         await refreshViews();
+        startDashboardClock();
     }
 
     // 9. Calendar Filter Dropdown Logic
