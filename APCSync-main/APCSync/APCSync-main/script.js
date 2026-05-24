@@ -1581,11 +1581,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         let upcomingCount = 0;
         let requiredCount = 0;
         let optionalCount = 0;
+        const countedEventIds = new Set(); // Track counted events by ID to avoid duplicates
 
         let requiredHtml = '';
         let optionalHtml = '';
         let personalHtml = '';
         let myScheduleHtml = '';
+        let allEventsList = []; // Store all events for history section
 
         Object.keys(events).forEach(dateStr => {
             // Fix UTC offset issue by manually parsing the date string "YYYY-MM-DD"
@@ -1600,10 +1602,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (events[dateStr].some(ev => shouldShowOnDashboard(ev, diffDays))) {
                 events[dateStr].forEach(ev => {
                     const eventDateFormatted = eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-                    if (diffDays <= 7 || ev.dashboardVisible) upcomingCount++;
-
                     const eventKey = String(ev.id);
+
+                    // Count events only once per ID
+                    if (!countedEventIds.has(eventKey)) {
+                        if (diffDays <= 7 || ev.dashboardVisible) {
+                            upcomingCount++;
+                            countedEventIds.add(eventKey);
+                        }
+                    }
                     
                     // Check if event has photos and add background image styling
                     const eventPhotos = eventPhotoCache[ev.id];
@@ -1638,6 +1645,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         endTime: ev.endTime || ev.end_time,
                         photos: eventPhotoCache[ev.id] || []
                     };
+
+                    // Add to events list for history
+                    allEventsList.push({
+                        ...ev,
+                        eventDateFormatted,
+                        dateObj: eventDate
+                    });
 
                     if (ev.type === 'required') {
                         requiredCount++;
@@ -1756,6 +1770,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showEventDetailsModal(link.dataset.eventDetailsLink);
             });
         });
+
+        // Render Event History for student/faculty dashboard
+        const eventHistoryContainer = document.getElementById('student-event-history');
+        if (eventHistoryContainer) {
+            // Sort events by date (newest first)
+            const recentEvents = allEventsList
+                .slice()
+                .sort((a, b) => {
+                    const dateA = new Date(`${a.date}T${a.startTime || a.start_time || '00:00'}:00`);
+                    const dateB = new Date(`${b.date}T${b.startTime || b.start_time || '00:00'}:00`);
+                    return dateB - dateA;
+                })
+                .slice(0, 6);
+
+            if (recentEvents.length > 0) {
+                eventHistoryContainer.innerHTML = recentEvents.map(event => {
+                    const eventTime = `${formatTimeLabel(event.startTime || event.start_time)} - ${formatTimeLabel(event.endTime || event.end_time)}`;
+                    return `
+                        <div class="card" style="margin-bottom:1rem; padding:1rem; cursor:pointer;" data-event-details-link="${event.id}">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+                                <strong>${event.title || 'Untitled event'}</strong>
+                                <span style="font-size:0.9rem; color:var(--text-secondary);">${event.eventDateFormatted} ${eventTime}</span>
+                            </div>
+                            <div style="margin-top:0.75rem; color:var(--text-secondary);">
+                                <div><strong>Location:</strong> ${event.location || 'TBD'}</div>
+                                <div><strong>Type:</strong> <span style="text-transform:capitalize;">${event.type || 'N/A'}</span></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Attach click handlers to event history items
+                const eventHistoryLinks = eventHistoryContainer.querySelectorAll('[data-event-details-link]');
+                eventHistoryLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        showEventDetailsModal(link.dataset.eventDetailsLink);
+                    });
+                });
+            } else {
+                eventHistoryContainer.innerHTML = '<div class="empty-state" style="padding:1rem;"><p>No recent event history available.</p></div>';
+            }
+        }
     }
 
     function showEventDetailsModal(eventId) {
