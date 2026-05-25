@@ -59,13 +59,14 @@
                             </div>
                             <input type="password" id="password" placeholder="Enter your password">
                         </div>
+                        <div class="input-group checkbox-group">
+                            <label for="privacy-agreement">
+                                <input type="checkbox" id="privacy-agreement">
+                                I have read and agree to the <a href="#" id="privacy-link">Privacy & Data Notice</a>.
+                            </label>
+                        </div>
                         <button type="submit">Sign in</button>
                     </form>
-                    <div class="login-footer">
-                        <p class="privacy-notice">
-                            By signing in, you agree to our <a href="#" id="privacy-link">Privacy Policy</a>
-                        </p>
-                    </div>
                 </div>
             </div>
             <div class="login-right">
@@ -78,51 +79,13 @@
     <div id="privacy-modal" class="modal-overlay hidden">
         <div class="modal-content privacy-modal-content">
             <div class="modal-header">
-                <h3>Privacy Policy & Data Disclosure</h3>
+                <h3>Privacy & Data Notice</h3>
                 <button class="modal-close" id="privacy-modal-close"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body privacy-modal-body">
-                <section>
-                    <h4>Privacy Policy & Data Protection</h4>
-                    <p><strong>Effective Date: May 8, 2026</strong></p>
-                    <p>APCSync collects and processes personal data in compliance with the <strong>Data Privacy Act of 2012</strong> (Philippines) and <strong>GDPR</strong>. We process your data based on contractual necessity, legal obligations, and legitimate interests in system security and service improvement.</p>
-                </section>
-                <section>
-                    <h5>Information We Collect</h5>
-                    <ul>
-                        <li><strong>Email Address:</strong> For authentication and account management</li>
-                        <li><strong>User Role:</strong> Student or Faculty classification</li>
-                        <li><strong>Calendar & Event Data:</strong> Your personal schedule and bookings</li>
-                        <li><strong>Usage Data:</strong> Pages visited, features used, login activity</li>
-                    </ul>
-                </section>
-
-                <section>
-                    <h5>How We Use Your Data</h5>
-                    <p>Your data is used exclusively for:</p>
-                    <ul>
-                        <li>Authentication and account access</li>
-                        <li>Service delivery (calendar management, event bookings)</li>
-                        <li>Event notifications and reminders</li>
-                        <li>System security and fraud prevention</li>
-                        <li>Service optimization and compliance with legal requirements</li>
-                    </ul>
-                </section>
-
-                <section>
-                    <h5>Data Retention & Your Rights</h5>
-                    <p>We retain your data only as long as necessary. Under the <strong>Data Privacy Act of 2012</strong> and <strong>GDPR Article 17</strong>, you have the right to: access your data, correct inaccuracies, request deletion (processed within 30 days), and export your calendar data. Deletion requests can be submitted at any time.</p>
-                </section>
-
-                <section>
-                    <h5>Security & Data Sharing</h5>
-                    <p>We protect your data using SSL/TLS encryption, secure authentication, and regular security audits. Your data is shared only with authorized institutional administrators, when legally required, or with service providers bound by confidentiality agreements. We do not sell your data to third parties or use it for marketing.</p>
-                </section>
-
-                <section>
-                    <h5>Cookies & Updates</h5>
-                    <p>We use browser storage to maintain your login session and preferences. You can clear this data anytime through your browser settings. This policy complies with the Data Privacy Act of 2012 and GDPR and may be updated at any time. Continued use of APCSync indicates your acceptance of these terms.</p>
-                </section>
+                <p><strong>Effective Date: May 8, 2026</strong></p>
+                <p>APCSync collects and processes personal data in compliance with the <strong>Data Privacy Act of 2012</strong> (Philippines) and <strong>GDPR</strong>. We process your data based on contractual necessity, legal obligations, and legitimate interests in system security and service improvement.</p>
+                <p>APCSync uses only the information needed to authenticate you, provide calendar and booking services, and keep the system secure. Your email, role, schedule, and booking data are handled under applicable privacy laws, and we do not sell your information.</p>
             </div>
             <div class="modal-footer">
                 <button class="btn-blue" id="privacy-modal-accept">I Understand</button>

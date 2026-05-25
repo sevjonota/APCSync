@@ -306,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const appWrapper = document.getElementById('app-wrapper');
     const btnLogout = document.getElementById('btn-logout');
     const emailInput = document.getElementById('email');
+    const agreementCheckbox = document.getElementById('privacy-agreement');
     const bookingNavItem = document.querySelector('.nav-item[data-target="booking"]');
 
     function applyRoleUi(role) {
@@ -365,6 +366,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const password = passwordInput ? passwordInput.value.trim() : '';
         if (!email || !password) {
             showNotice('Please enter your email and password.', 'error');
+            return;
+        }
+
+        if (!agreementCheckbox?.checked) {
+            showNotice('Please agree to the Privacy & Data Notice before signing in.', 'error');
             return;
         }
 

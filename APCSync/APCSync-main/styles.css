@@ -281,6 +281,40 @@ button:active, .button:active, .btn-blue:active, .btn-gold:active, .btn-outline:
     box-shadow: var(--neumo-inset);
     width:100%;
 }
+.input-group input[type="checkbox"] {
+    appearance: auto;
+    -webkit-appearance: checkbox;
+    width: 1rem;
+    height: 1rem;
+    margin: 0.15rem 0 0 0;
+    border: 1px solid var(--border-color);
+    border-radius: 0.25rem;
+    background: #fff;
+    cursor: pointer;
+}
+.input-group input[type="checkbox"]:focus {
+    outline: 2px solid rgba(45,90,157,0.18);
+    outline-offset: 2px;
+}
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+.checkbox-group label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    cursor: pointer;
+}
+.checkbox-group label a {
+    color: var(--yellow-600);
+    text-decoration: none;
+}
 .input-group input:focus { outline:none; border-color: rgba(22,50,90,0.12); box-shadow: 0 6px 12px rgba(22,50,90,0.06), 0 0 0 2px rgba(22,50,90,0.03); }
 
 /* Accessible focus states */
