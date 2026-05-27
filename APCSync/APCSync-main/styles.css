@@ -1,3 +1,64 @@
+/* Carousel styles for event details */
+.carousel-container {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 1.5rem auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+.carousel-image-wrapper {
+    width: 100%;
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.18);
+    position: relative;
+}
+.carousel-image {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    position: absolute;
+    left: 0;
+    top: 0;
+    transition: opacity 0.3s;
+}
+.carousel-arrow {
+    background: rgba(0,0,0,0.32);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    cursor: pointer;
+    transition: background 0.2s;
+    opacity: 0.85;
+}
+.carousel-arrow:hover {
+    background: rgba(0,0,0,0.55);
+}
+.carousel-arrow-left {
+    left: -18px;
+}
+.carousel-arrow-right {
+    right: -18px;
+}
 :root {
     /* Primary brand colors (soft pastel palette) */
     --blue-900: #16325a; /* structural */
@@ -319,7 +380,7 @@ button:active, .button:active, .btn-blue:active, .btn-gold:active, .btn-outline:
 
 /* Accessible focus states */
 button:focus, .button:focus, .btn-icon:focus, .input-group input:focus, .dropdown-item:focus { outline: none; box-shadow: 0 6px 14px rgba(22,50,90,0.06); border-radius: 12px; }
-.login-box button[type="submit"] { composes: button; width:100%; display:inline-flex; justify-content:center; }
+.login-box button[type="submit"] { color-scheme: button; width:100%; display:inline-flex; justify-content:center; }
 
 /* Login Footer & Privacy Notice */
 .login-footer {
@@ -600,7 +661,35 @@ th, td { background: #ffffff; }
 .action-buttons { display: flex; gap: 12px; justify-content: center; }
 
 /* Event Details */
-.event-details-content { max-width: 800px; margin: 0 auto; background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); overflow: hidden; }
+.event-details-content {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    position: relative;
+}
+
+/* For background image details */
+.details-photo-bg {
+    background-color: rgba(0,0,0,0.45);
+    background-blend-mode: darken;
+    color: #fff;
+}
+.details-photo-bg .details-bg-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8,16,30,0.32) 0%, rgba(8,16,30,0.55) 100%);
+    border-radius: var(--radius-lg);
+    z-index: 0;
+    pointer-events: none;
+}
+.details-photo-bg > *:not(.details-bg-overlay) {
+    position: relative;
+    z-index: 1;
+}
 .event-header { background: var(--navy-blue-light); padding: 3rem 2rem; text-align: center; border-bottom: 1px solid var(--border-color); }
 .event-tag { color: var(--navy-blue); font-weight: 600; font-size: 0.875rem; letter-spacing: 0.05em; text-transform: uppercase; }
 .event-header h2 { font-size: 2.25rem; font-weight: 700; color: var(--navy-blue-dark); margin-top: 0.5rem; }
@@ -1455,7 +1544,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     cursor: default;
     position: relative;
 }
-./* Normalize all floor grid visuals to Soft UI: remove dark grid frames and give tiles rounded cards */
+/* Normalize all floor grid visuals to Soft UI: remove dark grid frames and give tiles rounded cards */
 .ground-floor-grid, .second-floor-grid, .third-floor-grid, .fourth-floor-grid, .fifth-floor-grid, .sixth-floor-grid, .seventh-floor-grid, .eighth-floor-grid, .ninth-floor-grid {
     gap: 10px !important;
     background-color: transparent !important;
@@ -1944,7 +2033,7 @@ select:focus,
 .filter-dropdown,
 .notifications-dropdown,
 .card,
-.split-card,
+.split-card{
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
 }
 
@@ -1952,7 +2041,7 @@ select:focus,
     background: rgba(255, 255, 255, 0.94);
     border-radius: var(--radius-md);
     box-shadow: none;
-
+}
 .calendar-day-cube:hover,
 .calendar-day-cube.selected {
     border-color: rgba(45, 90, 157, 0.22);
@@ -2024,7 +2113,7 @@ select:focus,
 
 .calendar-grid,
 .calendar-grid-container,
-.filter-dropdown {
+.filter-dropdown ,
 .map-wrapper,
 .booking-request-panel,
 .booking-room-summary,

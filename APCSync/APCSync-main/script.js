@@ -477,35 +477,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = eventDetailsData[eventId];
         if (!data) return;
 
+        let backgroundStyle = '';
+        let photoBgClass = '';
+        let autoSwitchInterval = null;
+        let currentIdx = 0;
+        if (data.photos && data.photos.length > 0) {
+            backgroundStyle = `background-image: url('${data.photos[0].src}'); background-size: cover; background-position: center; background-repeat: no-repeat; position: relative;`;
+            photoBgClass = 'details-photo-bg';
+        }
+
         scheduleDetailsPane.innerHTML = `
-            <div style="text-align: left; width: 100%;">
-                <h2 style="color: var(--navy-blue); margin-bottom: 1rem;">${data.title}</h2>
-                <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+            <div class="event-details-content ${photoBgClass}" style="${backgroundStyle} min-height: 340px; padding: 2.5rem 2rem; width: 100%; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
+                <div class="details-bg-overlay"></div>
+                <h2 style="color: var(--white); margin-bottom: 1rem; text-shadow: 0 2px 8px rgba(0,0,0,0.45);">${data.title}</h2>
+                <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.45);">
                     <i class="far fa-clock" style="color: var(--gold-dark); width: 20px;"></i>
                     <span>${data.time}</span>
                 </div>
-                <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.45);">
                     <i class="fas fa-map-marker-alt" style="color: var(--gold-dark); width: 20px;"></i>
                     <span>${data.location}</span>
                 </div>
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.25); margin-bottom: 1.5rem;">
                 <div>
-                    <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Event Details</h4>
-                    <p style="color: var(--text-secondary); line-height: 1.6;">${data.description}</p>
+                    <h4 style="margin-bottom: 0.5rem; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.45);">Event Details</h4>
+                    <p style="color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.45); line-height: 1.6;">${data.description}</p>
                 </div>
-                ${data.photos && data.photos.length ? `
-                    <div style="margin-top: 1.5rem;">
-                        <div class="photo-preview-grid">
-                            ${data.photos.map(photo => `<img src="${photo.src}" alt="${photo.name}" class="photo-preview-item">`).join('')}
-                        </div>
-                    </div>
-                ` : ''}
                 <div style="margin-top: 2rem; display: flex; gap: 0.5rem;">
                     <button class="btn-blue btn-sm" id="btn-edit-schedule-event" data-event-id="${eventId}">Edit</button>
                     <button class="btn-outline btn-sm" id="btn-delete-schedule-event" data-event-id="${eventId}">Delete</button>
                 </div>
             </div>
         `;
+
+        // Automatic background switching if multiple photos
+        if (data.photos && data.photos.length > 1) {
+            const detailsContent = scheduleDetailsPane.querySelector('.event-details-content');
+            let idx = 0;
+            if (window._apcSyncPhotoInterval) {
+                clearInterval(window._apcSyncPhotoInterval);
+            }
+            window._apcSyncPhotoInterval = setInterval(() => {
+                idx = (idx + 1) % data.photos.length;
+                detailsContent.style.backgroundImage = `url('${data.photos[idx].src}')`;
+            }, 3000);
+        } else {
+            if (window._apcSyncPhotoInterval) {
+                clearInterval(window._apcSyncPhotoInterval);
+                window._apcSyncPhotoInterval = null;
+            }
+        }
     }
 
     function renderScheduleDetailsPlaceholder() {
