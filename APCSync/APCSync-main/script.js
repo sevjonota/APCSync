@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return currentUser?.email?.trim().toLowerCase() || null;
     }
 
+    function getNotificationStorageKey() {
+        return `apcsync.notifications.${getCurrentUserKey() || 'anonymous'}`;
+    }
+
     function getAssistantService() {
         return window.service && typeof window.service.getAssistantConversation === 'function' ? window.service : null;
     }
@@ -2822,7 +2826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!notificationsListEl) return;
         let notes = [];
         try {
-            notes = (window.service && typeof window.service.getNotifications === 'function') ? window.service.getNotifications() : JSON.parse(localStorage.getItem('apcsync.notifications') || '[]');
+            notes = (window.service && typeof window.service.getNotifications === 'function') ? window.service.getNotifications() : JSON.parse(localStorage.getItem(getNotificationStorageKey()) || '[]');
         } catch (e) { notes = []; }
 
         notificationsListEl.innerHTML = '';
@@ -2857,8 +2861,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const updated = all.map(x => x.id === n.id ? { ...x, unread: false } : x);
                         // write back
                         const s = window.service.getState();
-                        s.notifications = updated;
+                        if (!s.notificationsByUser || typeof s.notificationsByUser !== 'object') s.notificationsByUser = {};
+                        s.notificationsByUser[getCurrentUserKey() || 'anonymous'] = updated;
                         window.service.setState(s);
+                        renderNotifications();
+                    } else {
+                        const key = getNotificationStorageKey();
+                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                        const updated = existing.map(x => x.id === n.id ? { ...x, unread: false } : x);
+                        localStorage.setItem(key, JSON.stringify(updated));
                         renderNotifications();
                     }
                 } catch (err) {}
@@ -2873,7 +2884,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.service.addNotification({ type, message, data });
             } else {
                 // fallback localStorage
-                const key = 'apcsync.notifications';
+                const key = getNotificationStorageKey();
                 const existing = JSON.parse(localStorage.getItem(key) || '[]');
                 existing.unshift({ id: `nt-${Date.now()}`, type, message, data, unread: true, createdAt: new Date().toISOString() });
                 localStorage.setItem(key, JSON.stringify(existing));
@@ -2921,7 +2932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (window.service && typeof window.service.markAllNotificationsRead === 'function') {
                         window.service.markAllNotificationsRead();
                     } else {
-                        const key = 'apcsync.notifications';
+                        const key = getNotificationStorageKey();
                         const existing = JSON.parse(localStorage.getItem(key) || '[]').map(n => ({ ...n, unread: false }));
                         localStorage.setItem(key, JSON.stringify(existing));
                     }
@@ -2939,7 +2950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (window.service && typeof window.service.clearNotifications === 'function') {
                         window.service.clearNotifications();
                     } else {
-                        const key = 'apcsync.notifications';
+                        const key = getNotificationStorageKey();
                         localStorage.setItem(key, '[]');
                     }
                 } catch (err) {}

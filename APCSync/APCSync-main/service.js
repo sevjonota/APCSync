@@ -151,7 +151,7 @@ const service = (() => {
         personalEventsByUser: {},
         seededPersonalUsers: {},
         assistantConversationsByUser: {},
-        notifications: []
+        notificationsByUser: {}
     };
 
     function normalizeState(rawState) {
@@ -175,7 +175,13 @@ const service = (() => {
             assistantConversationsByUser: nextState.assistantConversationsByUser && typeof nextState.assistantConversationsByUser === 'object'
                 ? nextState.assistantConversationsByUser
                 : {},
-            notifications: Array.isArray(nextState.notifications) ? nextState.notifications : []
+            notificationsByUser: nextState.notificationsByUser && typeof nextState.notificationsByUser === 'object'
+                ? nextState.notificationsByUser
+                : (() => {
+                    const userKey = String((nextState.user && nextState.user.email) || initialState.user.email || '').trim().toLowerCase();
+                    const legacyNotifications = Array.isArray(nextState.notifications) ? nextState.notifications : [];
+                    return userKey ? { [userKey]: legacyNotifications } : {};
+                })()
         };
     }
 
@@ -273,6 +279,20 @@ const service = (() => {
     function getUserKey() {
         const email = state.user?.email?.trim().toLowerCase();
         return email || null;
+    }
+
+    function getNotificationUserKey(userKey = getUserKey()) {
+        return userKey || 'anonymous';
+    }
+
+    function getNotificationBucket(stateRef, userKey = getNotificationUserKey()) {
+        if (!stateRef.notificationsByUser || typeof stateRef.notificationsByUser !== 'object') {
+            stateRef.notificationsByUser = {};
+        }
+        if (!Array.isArray(stateRef.notificationsByUser[userKey])) {
+            stateRef.notificationsByUser[userKey] = [];
+        }
+        return stateRef.notificationsByUser[userKey];
     }
 
     function normalizeAssistantMessages(messages) {
@@ -514,15 +534,17 @@ const service = (() => {
         return deleted;
     }
 
-    // Notifications helpers (persisted in state.notifications)
+    // Notifications helpers (persisted per user in state.notificationsByUser)
     function getNotifications() {
         const s = getState();
-        return Array.isArray(s.notifications) ? clone(s.notifications) : [];
+        const userKey = getNotificationUserKey();
+        return clone(Array.isArray(s.notificationsByUser?.[userKey]) ? s.notificationsByUser[userKey] : []);
     }
 
     function addNotification(payload) {
         const stateLocal = getState();
-        if (!Array.isArray(stateLocal.notifications)) stateLocal.notifications = [];
+        const userKey = getNotificationUserKey();
+        const notifications = getNotificationBucket(stateLocal, userKey);
         const id = `nt-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const note = {
             id,
@@ -532,22 +554,25 @@ const service = (() => {
             unread: payload?.unread !== false,
             createdAt: new Date().toISOString()
         };
-        stateLocal.notifications.unshift(note);
+        notifications.unshift(note);
         setState(stateLocal);
         return clone(note);
     }
 
     function markAllNotificationsRead() {
         const stateLocal = getState();
-        if (!Array.isArray(stateLocal.notifications)) return false;
-        stateLocal.notifications = stateLocal.notifications.map(n => ({ ...n, unread: false }));
+        const userKey = getNotificationUserKey();
+        const notifications = getNotificationBucket(stateLocal, userKey);
+        stateLocal.notificationsByUser[userKey] = notifications.map(n => ({ ...n, unread: false }));
         setState(stateLocal);
         return true;
     }
 
     function clearNotifications() {
         const stateLocal = getState();
-        stateLocal.notifications = [];
+        const userKey = getNotificationUserKey();
+        getNotificationBucket(stateLocal, userKey);
+        stateLocal.notificationsByUser[userKey] = [];
         setState(stateLocal);
         return true;
     }
