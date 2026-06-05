@@ -2,8 +2,10 @@
 // Frontend-only prototype state holder (in-memory, no backend, no persistence).
 
 const service = (() => {
+    // localStorage key used to persist frontend state in the browser
     const STORAGE_KEY = 'apcsync.frontendState.v2';
 
+    // sample user accounts for the prototype demo
     const demoUsers = [
         {
             id: 'u-student-001',
@@ -28,6 +30,7 @@ const service = (() => {
         }
     ];
 
+    // sample rooms available in the mock floor map
     const demoRooms = [
         { id: 'rm-G01', floor: 'G', name: 'Ground Floor Room 01', capacity: 40, features: ['projector', 'whiteboard'], status: 'available' },
         { id: 'rm-G02', floor: 'G', name: 'Ground Floor Room 02', capacity: 35, features: ['whiteboard'], status: 'available' },
@@ -101,6 +104,7 @@ const service = (() => {
         }
     };
 
+    // initial in-memory application state used when no saved state exists
     const initialState = {
         user: {
             id: 'u-student-001',
@@ -154,6 +158,7 @@ const service = (() => {
         notificationsByUser: {}
     };
 
+    // normalize raw state into a valid state object with defaults
     function normalizeState(rawState) {
         const nextState = rawState && typeof rawState === 'object' ? rawState : {};
         return {
@@ -187,10 +192,12 @@ const service = (() => {
 
     let nextEventId = 2000;
 
+    // deep clone objects to avoid accidental state mutation
     function clone(value) {
         return JSON.parse(JSON.stringify(value));
     }
 
+    // create a safe room key string from room or map labels
     function slugifyRoomKey(value) {
         return String(value || 'room')
             .trim()
@@ -205,6 +212,7 @@ const service = (() => {
             .trim() || 'Room';
     }
 
+    // sync room definitions from DOM room elements into application state
     function syncRoomsFromMap() {
         if (typeof document === 'undefined') return state.rooms || [];
 
@@ -244,6 +252,7 @@ const service = (() => {
         return mergedRooms;
     }
 
+    // load saved state from browser storage, or return defaults on failure
     function loadState() {
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -254,6 +263,7 @@ const service = (() => {
         }
     }
 
+    // persist the current frontend state to localStorage
     function saveState() {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -264,11 +274,13 @@ const service = (() => {
 
     let state = loadState();
 
+    // return a cloned snapshot of current state
     function getState() {
         syncRoomsFromMap();
         return clone(state);
     }
 
+    // replace the app state and persist it
     function setState(nextState) {
         state = normalizeState(nextState);
         syncRoomsFromMap();
@@ -276,15 +288,18 @@ const service = (() => {
         return clone(state);
     }
 
+    // current logged-in user's normalized email key
     function getUserKey() {
         const email = state.user?.email?.trim().toLowerCase();
         return email || null;
     }
 
+    // fallback bucket key for notifications if no user is signed in
     function getNotificationUserKey(userKey = getUserKey()) {
         return userKey || 'anonymous';
     }
 
+    // get or create the notification array for a given user key
     function getNotificationBucket(stateRef, userKey = getNotificationUserKey()) {
         if (!stateRef.notificationsByUser || typeof stateRef.notificationsByUser !== 'object') {
             stateRef.notificationsByUser = {};
@@ -295,6 +310,7 @@ const service = (() => {
         return stateRef.notificationsByUser[userKey];
     }
 
+    // ensure assistant messages always use a consistent shape
     function normalizeAssistantMessages(messages) {
         return Array.isArray(messages)
             ? messages
@@ -308,6 +324,7 @@ const service = (() => {
             : [];
     }
 
+    // add demo personal events for a user if they do not already exist
     function ensurePersonalSeedForUser(userKey) {
         if (!userKey) return;
 
@@ -425,6 +442,7 @@ const service = (() => {
         return true;
     }
 
+    // create a new event in either personal or institutional event storage
     function addEvent(date, eventData) {
         if (!isDateAllowed(date)) return null;
 
@@ -513,6 +531,7 @@ const service = (() => {
         return clone(updated);
     }
 
+    // remove an event by id from whichever store contains it
     function deleteEvent(eventId) {
         let deleted = false;
         const stores = [state.institutionalEvents];
@@ -535,12 +554,14 @@ const service = (() => {
     }
 
     // Notifications helpers (persisted per user in state.notificationsByUser)
+    // get the current user's notifications
     function getNotifications() {
         const s = getState();
         const userKey = getNotificationUserKey();
         return clone(Array.isArray(s.notificationsByUser?.[userKey]) ? s.notificationsByUser[userKey] : []);
     }
 
+    // add a new notification for the current user and save state
     function addNotification(payload) {
         const stateLocal = getState();
         const userKey = getNotificationUserKey();

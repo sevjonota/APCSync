@@ -1,3 +1,4 @@
+// Startup: wait for DOM ready and initialize application state
 document.addEventListener('DOMContentLoaded', async () => {
 
     const api = window.api;
@@ -12,10 +13,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentUser = null;
     let pendingConfirmResolve = null;
 
+    // UI helper: render the Ramsey avatar image markup
     function getRamseyAvatarMarkup(className = 'ramsey-avatar') {
         return `<img src="${ramseyLogoPath}" alt="Ramsey" class="${className}">`;
     }
 
+    // helper: normalize current user email for lookup keys
     function getCurrentUserKey() {
         return currentUser?.email?.trim().toLowerCase() || null;
     }
@@ -33,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (chatEmptyState) chatEmptyState.classList.remove('hidden-state');
     }
 
+    // render the assistant conversation messages into the chat panel
     function renderAssistantConversation() {
         if (!chatMessagesWrapper || !chatEmptyState) return;
         clearAssistantConversationView();
@@ -67,10 +71,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // normalize API errors into a user-friendly message
     function getApiErrorMessage(error, fallback = 'Something went wrong.') {
         return error?.error?.message || error?.message || fallback;
     }
 
+    // apply logged-in user identity and update UI accordingly
     function applyCurrentUser(user) {
         currentUser = user || null;
         const profileNameEl = document.getElementById('user-profile-name');
@@ -81,6 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderAssistantConversation();
     }
 
+    // map selected visibility options into event payload fields
     function parseVisibilityPayload(eventType, visibleScope, customUserList) {
         if (eventType === 'personal') {
             return { visibility: 'INTERNAL_PERSONAL_ONLY', visibleTo: null };
@@ -99,6 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    // group event objects by date, then sort each day by start time
     function groupEventsByDate(events) {
         const groupedEvents = {};
         events.forEach((eventData) => {
@@ -152,6 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // fetch event list from API and prepare them for the UI
     async function loadVisibleEvents() {
         const response = await api.listEvents();
         const events = response.events || [];
@@ -190,6 +199,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // show a temporary toast notification to the user
     function showNotice(message, type = 'info') {
         if (!toastContainer) return;
 
@@ -262,7 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // 1. Navigation Flow Logic
+    // 1. Navigation Flow Logic: sidebar and in-app page switching
     const navItems = document.querySelectorAll('.nav-item[data-target]');
     const navLinks = document.querySelectorAll('.nav-link[data-target]');
     const sections = document.querySelectorAll('.content-section');
@@ -304,7 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     navItems.forEach(item => item.addEventListener('click', e => { e.preventDefault(); navigateTo(item.dataset.target); }));
     navLinks.forEach(link => link.addEventListener('click', e => { e.preventDefault(); navigateTo(link.dataset.target); }));
 
-    // 2. Frontend-Only Authentication Flow (UI role simulation)
+    // 2. Frontend-only login flow and role-based UI toggling
     const loginForm = document.getElementById('login-form');
     const loginView = document.getElementById('login-view');
     const appWrapper = document.getElementById('app-wrapper');
@@ -412,7 +422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         loginView.classList.add('active');
     });
 
-    // 3. Interactive visual polish elements
+    // 3. Interactive UI polish: button toggles and visual controls
     // Active toggles in toolbar
     const viewToggles = document.querySelectorAll('.view-toggles button');
     viewToggles.forEach(btn => {
@@ -453,6 +463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     ];
 
+    // load stored event photo metadata from local storage
     function loadPhotoCache() {
         try {
             const json = localStorage.getItem('apcsync.eventPhotoCache');
