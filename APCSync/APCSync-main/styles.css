@@ -834,12 +834,16 @@ th, td { background: #ffffff; }
 
 .booking-map-container { flex:1; }
 .floor-map-wrapper { height: 480px; display:flex; align-items:center; justify-content:center; }
-.ground-floor-grid, .second-floor-grid, .third-floor-grid { display:grid; grid-template-columns: repeat(9, 1fr); gap: 0.6rem; width:100%; }
-.room { background: #ffffff; border-radius: 12px; padding:0.6rem; display:flex; align-items:center; justify-content:center; color:var(--text-primary); border:1px solid rgba(66,82,110,0.04); transition: transform var(--transition), box-shadow var(--transition), background var(--transition); }
+.ground-floor-grid, .second-floor-grid, .third-floor-grid, .fourth-floor-grid, .fifth-floor-grid, .sixth-floor-grid, .seventh-floor-grid, .eighth-floor-grid, .ninth-floor-grid, .tenth-floor-grid, .eleventh-floor-grid, .twelfth-floor-grid { display:grid; grid-template-columns: repeat(9, 1fr); gap: 0.25rem; width:100%; }
+.room { background: #ffffff; border-radius: 12px; padding:0.45rem; display:flex; align-items:center; justify-content:center; color:var(--blue-900); border:1px solid rgba(66,82,110,0.04); transition: transform var(--transition), box-shadow var(--transition), background var(--transition); font-size: 1.125rem; font-weight: 700; line-height: 1; }
 .room.booking-room { cursor: pointer; }
 .room:hover { transform: translateY(-3px); box-shadow: var(--elevation-sm); }
 .room.available { background: #ffffff; border:1px solid rgba(62,151,255,0.08); }
 .room.booked { background: #fff6de; border:1px solid rgba(232,184,68,0.08); }
+
+/* Ensure inner text scales and is readable for nested room blocks */
+.room span, .room > * { font-size: inherit; font-weight: inherit; color: inherit; }
+.nested-room .nested-top, .nested-room .nested-bottom { display:block; text-align:center; width:100%; }
 
 /* Popup room summary */
 .popup-room { position: absolute; background: #ffffff; border-radius: 12px; padding:0.75rem; box-shadow: var(--elevation-md); border:1px solid var(--border-color); z-index: 1150; }
@@ -1335,7 +1339,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 2.5fr 1.2fr 1.5fr 0.6fr 2.5fr 2fr;
     grid-template-rows: 120px 40px 120px;
-    gap: 2px;
+    gap: 0.25rem;
     background-color: var(--navy-blue-light);
     border: 2px solid rgba(99, 137, 187, 0.22);
     width: 100%;
@@ -1348,7 +1352,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 1.125rem;
 }
 
 
@@ -1390,7 +1394,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: 120px 40px 120px;
-    gap: 10px;
+    gap: 0.25rem;
     background-color: transparent;
     border: none;
     width: 100%;
@@ -1403,7 +1407,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 1.125rem;
     border: 1px solid var(--border-color);
     box-shadow: var(--neumo-light);
     border-radius: var(--radius-md);
@@ -1434,13 +1438,13 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 4fr 4fr 4fr 4fr 6fr 3fr 3fr 4fr 2fr 2fr 4fr;
     grid-template-rows: 150px 40px 150px;
-    gap: 10px;
+    gap: 0.25rem;
     background-color: transparent;
     border: none;
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    font-size: 0.9rem;
+    font-size: 1.125rem;
 }
 .fourth-floor-grid > div {
     background-color: #FFFFFF;
@@ -1462,7 +1466,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 1.2fr 0.5fr 0.7fr 0.4fr 1.2fr 0.5fr 0.5fr 1.0fr 0.5fr 1.8fr 0.6fr 0.6fr 1.5fr;
     grid-template-rows: 150px 40px 150px;
-    gap: 10px;
+    gap: 0.25rem;
     background-color: transparent;
     border: none;
     width: 100%;
@@ -1475,7 +1479,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 1.125rem;
     text-align: center;
     line-height: 1.2;
     border: 1px solid var(--border-color);
@@ -1513,7 +1517,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     grid-template-rows: 120px 40px 120px;
-    gap: 10px;
+    gap: 0.25rem;
     background-color: transparent;
     border: none;
     width: 100%;
@@ -1526,7 +1530,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 1.125rem;
     border: 1px solid var(--border-color);
     box-shadow: var(--neumo-light);
     border-radius: var(--radius-md);
@@ -1546,7 +1550,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
 }
 /* Normalize all floor grid visuals to Soft UI: remove dark grid frames and give tiles rounded cards */
 .ground-floor-grid, .second-floor-grid, .third-floor-grid, .fourth-floor-grid, .fifth-floor-grid, .sixth-floor-grid, .seventh-floor-grid, .eighth-floor-grid, .ninth-floor-grid {
-    gap: 10px !important;
+    gap: 0.25rem !important;
     background-color: transparent !important;
     border: none !important;
 }
@@ -1569,7 +1573,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 0.8fr 0.8fr 1fr 1fr 1fr 0.8fr 0.4fr 1fr 1fr 1fr 1fr 1fr;
     grid-template-rows: 150px 40px 150px;
-    gap: 2px;
+    gap: 0.25rem;
     background-color: var(--navy-blue-light);
     border: 2px solid rgba(99, 137, 187, 0.22);
     width: 100%;
@@ -1582,7 +1586,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 1.125rem;
     text-align: center;
     line-height: 1.2;
 }
@@ -1641,7 +1645,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 1.5fr 1.5fr 0.4fr 1.5fr 1.5fr 1.5fr 1.5fr 1fr 1fr 1fr 1fr;
     grid-template-rows: 150px 40px 150px;
-    gap: 2px;
+    gap: 0.25rem;
     background-color: var(--navy-blue-light);
     border: 2px solid rgba(99, 137, 187, 0.22);
     width: 100%;
@@ -1654,7 +1658,7 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 1.125rem;
     text-align: center;
     line-height: 1.2;
 }
@@ -1682,13 +1686,13 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: repeat(8, 1fr) 0.5fr repeat(8, 1fr);
     grid-template-rows: 150px 40px 150px;
-    gap: 2px;
+    gap: 0.25rem;
     background-color: var(--navy-blue-light);
     border: 2px solid rgba(99, 137, 187, 0.22);
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    font-size: 0.8rem;
+    font-size: 1.125rem;
 }
 .ninth-floor-grid > div {
     background-color: #FFFFFF;
@@ -1725,13 +1729,13 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 3.5fr 2.2fr 1.6fr 1.2fr 0.8fr 2fr 2fr 2fr;
     grid-template-rows: 150px 40px 150px;
-    gap: 2px;
+    gap: 0.25rem;
     background-color: var(--navy-blue-light);
     border: 2px solid rgba(99, 137, 187, 0.22);
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    font-size: 0.85rem;
+    font-size: 1.125rem;
 }
 .tenth-floor-grid > div {
     background-color: #FFFFFF;
@@ -1748,13 +1752,13 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 2fr 0.4fr 0.6fr 0.9fr 0.8fr 0.8fr;
     grid-template-rows: 150px 40px 150px;
-    gap: 2px;
+    gap: 0.25rem;
     background-color: var(--navy-blue-light);
     border: 2px solid rgba(99, 137, 187, 0.22);
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    font-size: 0.8rem;
+    font-size: 1.125rem;
 }
 .eleventh-floor-grid > div {
     background-color: #FFFFFF;
@@ -1773,13 +1777,13 @@ textarea.input-modern { resize: vertical; min-height: 100px; }
     display: grid;
     grid-template-columns: 2.5fr 0.6fr 0.4fr 1.5fr;
     grid-template-rows: 150px 40px 150px;
-    gap: 2px;
+    gap: 0.25rem;
     background-color: var(--navy-blue-light);
     border: 2px solid rgba(99, 137, 187, 0.22);
     width: 100%;
     max-width: 1000px;
     margin: 0 auto;
-    font-size: 0.95rem;
+    font-size: 1.125rem;
 }
 .twelfth-floor-grid > div {
     background-color: #FFFFFF;
@@ -2259,7 +2263,7 @@ select:focus,
 .twelfth-floor-grid {
     background-color: transparent !important;
     border: 1px solid var(--border-color) !important;
-    gap: 10px !important;
+    gap: 0.25rem !important;
 }
 
 .ground-floor-grid > div,
