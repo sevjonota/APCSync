@@ -283,8 +283,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             showNotice('Admin users do not access the student schedule pages.', 'error');
             targetId = 'dashboard';
         }
-        if (targetId === 'booking' && user && user.role === 'student') {
-            showNotice('Room booking is restricted to faculty members only.', 'error');
+        if (targetId === 'booking' && user && user.role === 'admin') {
+            showNotice('Admin users do not access the booking page.', 'error');
             targetId = 'dashboard';
         }
 
@@ -324,10 +324,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const bookingNavItem = document.querySelector('.nav-item[data-target="booking"]');
 
     function applyRoleUi(role) {
-        // Booking navigation: hidden for students
+        // Booking navigation: hide only for admin users
         if (bookingNavItem) {
-            bookingNavItem.classList.toggle('hidden', role === 'student');
-            if (role === 'student' && document.querySelector('.content-section.active')?.id === 'booking') {
+            bookingNavItem.classList.toggle('hidden', role === 'admin');
+            if (role === 'admin' && document.querySelector('.content-section.active')?.id === 'booking') {
                 navigateTo('dashboard');
             }
         }
@@ -350,10 +350,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (adminNav) adminNav.classList.toggle('hidden', role !== 'admin');
 
         if (bookingRequestPanel) {
-            bookingRequestPanel.classList.toggle('hidden', role !== 'faculty');
+            bookingRequestPanel.classList.toggle('hidden', role === 'admin');
         }
         if (bookingMyBookingsPanel) {
-            bookingMyBookingsPanel.classList.toggle('hidden', role !== 'faculty');
+            bookingMyBookingsPanel.classList.toggle('hidden', role === 'admin');
         }
 
         const activeSectionId = document.querySelector('.content-section.active')?.id;
@@ -994,7 +994,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function canRequestBooking(status, slotReady) {
-        return Boolean(currentUser && currentUser.role === 'faculty' && slotReady && !isBlockingBookingStatus(status));
+        // Allow both students and faculty to request bookings; admins cannot.
+        return Boolean(currentUser && currentUser.role && currentUser.role !== 'admin' && slotReady && !isBlockingBookingStatus(status));
     }
 
     async function refreshBookingAvailability() {
@@ -1055,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function renderMyBookings() {
         if (!bookingMyBookingsPanel || !bookingMyBookingsList) return;
 
-        if (!currentUser || currentUser.role !== 'faculty') {
+        if (!currentUser || currentUser.role === 'admin') {
             bookingMyBookingsPanel.classList.add('hidden');
             bookingMyBookingsList.innerHTML = '';
             return;
@@ -1103,7 +1104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (bookingEndTimeField && !bookingEndTimeField.value) bookingEndTimeField.value = '09:00';
 
         if (bookingRequestPanel) {
-            bookingRequestPanel.classList.toggle('hidden', !currentUser || currentUser.role !== 'faculty');
+            bookingRequestPanel.classList.toggle('hidden', !currentUser || currentUser.role === 'admin');
         }
 
         if (bookingRoomSummary) {
@@ -1111,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (bookingRequestBtn) {
-            bookingRequestBtn.disabled = !currentUser || currentUser.role !== 'faculty';
+            bookingRequestBtn.disabled = !currentUser || currentUser.role === 'admin';
         }
 
         await Promise.all([refreshBookingAvailability(), renderMyBookings()]);
@@ -3062,11 +3063,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if (bookingRequestBtn) {
-        bookingRequestBtn.addEventListener('click', async (e) => {
+        if (bookingRequestBtn) {
+            bookingRequestBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            if (!currentUser || currentUser.role !== 'faculty') {
-                showNotice('Only faculty members can request bookings.', 'error');
+            if (!currentUser || currentUser.role === 'admin') {
+                showNotice('Only students or faculty can request bookings.', 'error');
                 return;
             }
 
@@ -3130,7 +3131,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 setBookingFormError(getApiErrorMessage(error, 'Unable to create booking request.'));
                 await refreshBookingAvailability();
             } finally {
-                if (bookingRequestBtn && currentUser?.role === 'faculty') {
+                if (bookingRequestBtn && currentUser?.role && currentUser.role !== 'admin') {
                     bookingRequestBtn.disabled = false;
                 }
             }
@@ -3146,7 +3147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             try {
                 cancelButton.disabled = true;
-                const resp = await api.updateBookingStatus(bookingId, { action: 'cancel', decisionNote: 'Cancelled by faculty' });
+                const resp = await api.updateBookingStatus(bookingId, { action: 'cancel', decisionNote: `Cancelled by ${currentUser?.role || 'requester'}` });
                 const bk = resp.booking || resp;
                 showNotice('Booking cancelled.', 'success');
                 addAppNotification('booking.cancelled', `Booking cancelled: ${bk.roomId} ${formatDateLabel(bk.date)} ${formatTimeLabel(bk.startTime)} - ${formatTimeLabel(bk.endTime)}`, { bookingId: bk.id });

@@ -829,8 +829,8 @@ window.api = (() => {
         return runWithDelay(() => {
             const state = getState();
             const currentUser = requireAuth(state);
-            if (!isFaculty(currentUser)) {
-                throw createApiError('STUDENT_CANNOT_REQUEST_BOOKING', 'Only faculty members can request bookings', undefined, 403);
+            if (isAdmin(currentUser)) {
+                throw createApiError('ADMIN_CANNOT_REQUEST_BOOKING', 'Admin users cannot request bookings', undefined, 403);
             }
 
             const date = String(payload?.date || payload?.booking_date || '').trim();
@@ -902,12 +902,12 @@ window.api = (() => {
             const currentUser = requireAuth(state);
             const bookings = getAllBookings(state).map(mapBookingForClient);
 
-            if (isStudent(currentUser)) {
-                throw createApiError('FORBIDDEN', 'Students cannot view bookings', undefined, 403);
-            }
-
             let visibleBookings = bookings;
-            if (isFaculty(currentUser)) {
+
+            if (isStudent(currentUser)) {
+                // Students may only view their own booking requests
+                visibleBookings = visibleBookings.filter((booking) => booking.requestedBy === currentUser.id);
+            } else if (isFaculty(currentUser)) {
                 visibleBookings = visibleBookings.filter((booking) => booking.requestedBy === currentUser.id);
             }
             if (filters.mine === '1' || filters.mine === 1 || filters.mine === true) {

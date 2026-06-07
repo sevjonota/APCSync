@@ -15,6 +15,13 @@ const service = (() => {
             createdAt: '2026-05-01T10:00:00Z'
         },
         {
+            id: 'u-student-002',
+            email: 'another@student.apc.edu.ph',
+            role: 'student',
+            name: 'Student User 2',
+            createdAt: '2026-05-02T09:00:00Z'
+        },
+        {
             id: 'u-faculty-001',
             email: 'someone@apc.edu.ph',
             role: 'faculty',
@@ -60,6 +67,25 @@ const service = (() => {
                     endTime: '17:00',
                     location: 'Library',
                     notes: 'Reviewing BST implementations and preparing for the quiz.',
+                    cancelled: false
+                }
+            ]
+        },
+        'another@student.apc.edu.ph': {
+            '2026-05-12': [
+                {
+                    id: 'ev-1004',
+                    title: 'Study Group - Algorithms',
+                    type: 'personal',
+                    createdBy: 'u-student-002',
+                    createdAt: '2026-05-11T16:00:00Z',
+                    visibility: 'INTERNAL_PERSONAL_ONLY',
+                    visibleTo: null,
+                    bookingId: null,
+                    startTime: '16:00',
+                    endTime: '18:00',
+                    location: 'Library - 2nd Floor',
+                    notes: 'Practice sorting algorithms and problem sets.',
                     cancelled: false
                 }
             ]
@@ -161,11 +187,19 @@ const service = (() => {
     // normalize raw state into a valid state object with defaults
     function normalizeState(rawState) {
         const nextState = rawState && typeof rawState === 'object' ? rawState : {};
+        // Ensure demo users are merged with any saved users so new demo accounts
+        // remain available even if an older state is stored in localStorage.
+        const savedUsers = Array.isArray(nextState.users) ? nextState.users : clone(initialState.users);
+        const mergedUserIndex = new Map();
+        [...savedUsers, ...clone(demoUsers)].forEach((u) => {
+            if (u && u.email) mergedUserIndex.set(String(u.email).trim().toLowerCase(), u);
+        });
+        const mergedUsers = Array.from(mergedUserIndex.values());
         return {
             ...clone(initialState),
             ...nextState,
             user: { ...clone(initialState.user), ...(nextState.user || {}) },
-            users: Array.isArray(nextState.users) ? nextState.users : clone(initialState.users),
+            users: mergedUsers,
             rooms: Array.isArray(nextState.rooms) ? nextState.rooms : clone(initialState.rooms),
             bookingsById: nextState.bookingsById && typeof nextState.bookingsById === 'object' ? nextState.bookingsById : {},
             institutionalEvents: nextState.institutionalEvents && typeof nextState.institutionalEvents === 'object'
