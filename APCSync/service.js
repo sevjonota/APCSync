@@ -1,0 +1,657 @@
+// --- APCSync Frontend Service Layer ---
+// Frontend-only prototype state holder (in-memory, no backend, no persistence).
+
+const service = (() => {
+    // localStorage key used to persist frontend state in the browser
+    const STORAGE_KEY = 'apcsync.frontendState.v2';
+
+    // sample user accounts for the prototype demo
+    const demoUsers = [
+        {
+            id: 'u-student-001',
+            email: 'someone@student.apc.edu.ph',
+            role: 'student',
+            name: 'Student User',
+            createdAt: '2026-05-01T10:00:00Z'
+        },
+        {
+            id: 'u-student-002',
+            email: 'another@student.apc.edu.ph',
+            role: 'student',
+            name: 'Student User 2',
+            createdAt: '2026-05-02T09:00:00Z'
+        },
+        {
+            id: 'u-faculty-001',
+            email: 'someone@apc.edu.ph',
+            role: 'faculty',
+            name: 'Faculty Member',
+            createdAt: '2026-05-01T10:00:00Z'
+        },
+        {
+            id: 'u-admin-001',
+            email: 'admin@apc.edu.ph',
+            role: 'admin',
+            name: 'Admin User',
+            createdAt: '2026-05-01T10:00:00Z'
+        }
+    ];
+
+    // sample rooms available in the mock floor map
+    const demoRooms = [
+        { id: 'rm-G01', floor: 'G', name: 'Ground Floor Room 01', capacity: 40, features: ['projector', 'whiteboard'], status: 'available' },
+        { id: 'rm-G02', floor: 'G', name: 'Ground Floor Room 02', capacity: 35, features: ['whiteboard'], status: 'available' },
+        { id: 'rm-101', floor: '1', name: 'Room 101', capacity: 50, features: ['projector', 'whiteboard'], status: 'available' },
+        { id: 'rm-102', floor: '1', name: 'Room 102', capacity: 45, features: ['projector'], status: 'available' },
+        { id: 'rm-201', floor: '2', name: 'Room 201', capacity: 50, features: ['projector', 'audio_system'], status: 'available' },
+        { id: 'rm-202', floor: '2', name: 'Room 202', capacity: 40, features: ['projector', 'whiteboard'], status: 'available' },
+        { id: 'rm-301', floor: '3', name: 'Room 301', capacity: 45, features: ['projector'], status: 'available' },
+        { id: 'rm-302', floor: '3', name: 'Room 302', capacity: 40, features: ['whiteboard'], status: 'available' },
+        { id: 'rm-401', floor: '4', name: 'Room 401', capacity: 60, features: ['projector', 'audio_system'], status: 'available' },
+        { id: 'rm-402', floor: '4', name: 'Room 402', capacity: 60, features: ['projector', 'whiteboard'], status: 'available' }
+    ];
+
+    const personalSeedTemplates = {
+        'someone@student.apc.edu.ph': {
+            '2026-05-12': [
+                {
+                    id: 'ev-1003',
+                    title: 'Study Group - Data Structures',
+                    type: 'personal',
+                    createdBy: 'u-student-001',
+                    createdAt: '2026-05-10T15:00:00Z',
+                    visibility: 'INTERNAL_PERSONAL_ONLY',
+                    visibleTo: null,
+                    bookingId: null,
+                    startTime: '15:00',
+                    endTime: '17:00',
+                    location: 'Library',
+                    notes: 'Reviewing BST implementations and preparing for the quiz.',
+                    cancelled: false
+                }
+            ]
+        },
+        'another@student.apc.edu.ph': {
+            '2026-05-12': [
+                {
+                    id: 'ev-1004',
+                    title: 'Study Group - Algorithms',
+                    type: 'personal',
+                    createdBy: 'u-student-002',
+                    createdAt: '2026-05-11T16:00:00Z',
+                    visibility: 'INTERNAL_PERSONAL_ONLY',
+                    visibleTo: null,
+                    bookingId: null,
+                    startTime: '16:00',
+                    endTime: '18:00',
+                    location: 'Library - 2nd Floor',
+                    notes: 'Practice sorting algorithms and problem sets.',
+                    cancelled: false
+                }
+            ]
+        },
+        'someone@apc.edu.ph': {
+            '2026-05-18': [
+                {
+                    id: 'ev-2003',
+                    title: 'Prep Meeting',
+                    type: 'personal',
+                    createdBy: 'u-faculty-001',
+                    createdAt: '2026-05-10T10:00:00Z',
+                    visibility: 'INTERNAL_PERSONAL_ONLY',
+                    visibleTo: null,
+                    bookingId: null,
+                    startTime: '10:00',
+                    endTime: '11:00',
+                    location: 'Faculty Lounge',
+                    notes: 'Prepare lecture notes and check attendance sheets.',
+                    cancelled: false
+                }
+            ]
+        },
+        'admin@apc.edu.ph': {
+            '2026-05-11': [
+                {
+                    id: 'ev-3003',
+                    title: 'Calendar Review',
+                    type: 'personal',
+                    createdBy: 'u-admin-001',
+                    createdAt: '2026-05-10T08:30:00Z',
+                    visibility: 'INTERNAL_PERSONAL_ONLY',
+                    visibleTo: null,
+                    bookingId: null,
+                    startTime: '09:00',
+                    endTime: '10:00',
+                    location: 'Admin Office',
+                    notes: 'Review all shared events and booking queues.',
+                    cancelled: false
+                }
+            ]
+        }
+    };
+
+    // initial in-memory application state used when no saved state exists
+    const initialState = {
+        user: {
+            id: 'u-student-001',
+            email: 'someone@student.apc.edu.ph',
+            role: 'student',
+            name: 'Student User'
+        },
+        users: demoUsers,
+        rooms: demoRooms,
+        bookingsById: {},
+        institutionalEvents: {
+            '2026-05-06': [
+                {
+                    id: 'ev-1001',
+                    title: 'APC General Assembly',
+                    type: 'required',
+                    createdBy: 'u-faculty-001',
+                    createdAt: '2026-05-01T09:00:00Z',
+                    dashboardVisible: true,
+                    visibility: 'everyone',
+                    visibleTo: null,
+                    bookingId: null,
+                    startTime: '13:00',
+                    endTime: '14:00',
+                    location: 'Multi-Purpose Hall',
+                    notes: 'Mandatory general assembly for all APC students.',
+                    cancelled: false
+                }
+            ],
+            '2026-05-09': [
+                {
+                    id: 'ev-1002',
+                    title: 'Data Structures Lecture',
+                    type: 'optional',
+                    createdBy: 'u-faculty-001',
+                    createdAt: '2026-05-01T10:00:00Z',
+                    visibility: 'all_students',
+                    visibleTo: null,
+                    bookingId: null,
+                    startTime: '14:30',
+                    endTime: '16:00',
+                    location: 'Room 402',
+                    notes: 'Topic: Implementing Binary Search Trees.',
+                    cancelled: false
+                }
+            ]
+        },
+        personalEventsByUser: {},
+        seededPersonalUsers: {},
+        assistantConversationsByUser: {},
+        notificationsByUser: {}
+    };
+
+    // normalize raw state into a valid state object with defaults
+    function normalizeState(rawState) {
+        const nextState = rawState && typeof rawState === 'object' ? rawState : {};
+        // Ensure demo users are merged with any saved users so new demo accounts
+        // remain available even if an older state is stored in localStorage.
+        const savedUsers = Array.isArray(nextState.users) ? nextState.users : clone(initialState.users);
+        const mergedUserIndex = new Map();
+        [...savedUsers, ...clone(demoUsers)].forEach((u) => {
+            if (u && u.email) mergedUserIndex.set(String(u.email).trim().toLowerCase(), u);
+        });
+        const mergedUsers = Array.from(mergedUserIndex.values());
+        return {
+            ...clone(initialState),
+            ...nextState,
+            user: { ...clone(initialState.user), ...(nextState.user || {}) },
+            users: mergedUsers,
+            rooms: Array.isArray(nextState.rooms) ? nextState.rooms : clone(initialState.rooms),
+            bookingsById: nextState.bookingsById && typeof nextState.bookingsById === 'object' ? nextState.bookingsById : {},
+            institutionalEvents: nextState.institutionalEvents && typeof nextState.institutionalEvents === 'object'
+                ? nextState.institutionalEvents
+                : clone(initialState.institutionalEvents),
+            personalEventsByUser: nextState.personalEventsByUser && typeof nextState.personalEventsByUser === 'object'
+                ? nextState.personalEventsByUser
+                : {},
+            seededPersonalUsers: nextState.seededPersonalUsers && typeof nextState.seededPersonalUsers === 'object'
+                ? nextState.seededPersonalUsers
+                : {},
+            assistantConversationsByUser: nextState.assistantConversationsByUser && typeof nextState.assistantConversationsByUser === 'object'
+                ? nextState.assistantConversationsByUser
+                : {},
+            notificationsByUser: nextState.notificationsByUser && typeof nextState.notificationsByUser === 'object'
+                ? nextState.notificationsByUser
+                : (() => {
+                    const userKey = String((nextState.user && nextState.user.email) || initialState.user.email || '').trim().toLowerCase();
+                    const legacyNotifications = Array.isArray(nextState.notifications) ? nextState.notifications : [];
+                    return userKey ? { [userKey]: legacyNotifications } : {};
+                })()
+        };
+    }
+
+    let nextEventId = 2000;
+
+    // deep clone objects to avoid accidental state mutation
+    function clone(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
+
+    // create a safe room key string from room or map labels
+    function slugifyRoomKey(value) {
+        return String(value || 'room')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'room';
+    }
+
+    function getRoomDisplayName(element) {
+        return String(element?.textContent || '')
+            .replace(/\s+/g, ' ')
+            .trim() || 'Room';
+    }
+
+    // sync room definitions from DOM room elements into application state
+    function syncRoomsFromMap() {
+        if (typeof document === 'undefined') return state.rooms || [];
+
+        const discovered = Array.from(document.querySelectorAll('.floor-map-wrapper .room, .floor-map-wrapper .nested-room')).map((element, index) => {
+            const mapElement = element.closest('.floor-map-wrapper');
+            const floorLabel = mapElement?.id ? mapElement.id.replace(/^map-/, '') : 'map';
+            const generatedId = `rm-${slugifyRoomKey(floorLabel)}-${String(index + 1).padStart(3, '0')}`;
+            const roomId = element.dataset.roomId || element.getAttribute('data-room-id') || generatedId;
+            const roomName = getRoomDisplayName(element);
+
+            element.dataset.roomId = roomId;
+            element.classList.add('booking-room');
+
+            if (!element.dataset.roomLabel) {
+                element.dataset.roomLabel = roomName;
+            }
+
+            return {
+                id: roomId,
+                floor: floorLabel,
+                name: roomName,
+                capacity: 40,
+                features: [],
+                status: 'available'
+            };
+        });
+
+        const roomIndex = new Map();
+        [...(state.rooms || []), ...discovered].forEach((room) => {
+            if (!roomIndex.has(room.id)) {
+                roomIndex.set(room.id, room);
+            }
+        });
+
+        const mergedRooms = Array.from(roomIndex.values());
+        state.rooms = mergedRooms;
+        return mergedRooms;
+    }
+
+    // load saved state from browser storage, or return defaults on failure
+    function loadState() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) return normalizeState();
+            return normalizeState(JSON.parse(stored));
+        } catch {
+            return normalizeState();
+        }
+    }
+
+    // persist the current frontend state to localStorage
+    function saveState() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch {
+            // Frontend-only prototype: ignore storage failures.
+        }
+    }
+
+    let state = loadState();
+
+    // return a cloned snapshot of current state
+    function getState() {
+        syncRoomsFromMap();
+        return clone(state);
+    }
+
+    // replace the app state and persist it
+    function setState(nextState) {
+        state = normalizeState(nextState);
+        syncRoomsFromMap();
+        saveState();
+        return clone(state);
+    }
+
+    // current logged-in user's normalized email key
+    function getUserKey() {
+        const email = state.user?.email?.trim().toLowerCase();
+        return email || null;
+    }
+
+    // fallback bucket key for notifications if no user is signed in
+    function getNotificationUserKey(userKey = getUserKey()) {
+        return userKey || 'anonymous';
+    }
+
+    // get or create the notification array for a given user key
+    function getNotificationBucket(stateRef, userKey = getNotificationUserKey()) {
+        if (!stateRef.notificationsByUser || typeof stateRef.notificationsByUser !== 'object') {
+            stateRef.notificationsByUser = {};
+        }
+        if (!Array.isArray(stateRef.notificationsByUser[userKey])) {
+            stateRef.notificationsByUser[userKey] = [];
+        }
+        return stateRef.notificationsByUser[userKey];
+    }
+
+    // ensure assistant messages always use a consistent shape
+    function normalizeAssistantMessages(messages) {
+        return Array.isArray(messages)
+            ? messages
+                .filter((entry) => entry && typeof entry === 'object')
+                .map((entry) => ({
+                    role: entry.role === 'assistant' ? 'assistant' : 'user',
+                    message: String(entry.message || ''),
+                    createdAt: entry.createdAt || new Date().toISOString(),
+                    questionId: entry.questionId || null
+                }))
+            : [];
+    }
+
+    // add demo personal events for a user if they do not already exist
+    function ensurePersonalSeedForUser(userKey) {
+        if (!userKey) return;
+
+        if (!state.personalEventsByUser[userKey]) {
+            const seed = clone(personalSeedTemplates[userKey] || {});
+            Object.keys(seed).forEach((dateKey) => {
+                seed[dateKey] = seed[dateKey].map((eventData, index) => ({
+                    ...eventData,
+                    id: `${eventData.id}-${userKey}-${index}`
+                }));
+            });
+            state.personalEventsByUser[userKey] = seed;
+        }
+
+        if (!state.seededPersonalUsers[userKey]) {
+            state.seededPersonalUsers[userKey] = true;
+            saveState();
+        }
+    }
+
+    function getInstitutionalEvents() {
+        return state.institutionalEvents;
+    }
+
+    function getRooms() {
+        syncRoomsFromMap();
+        return clone(state.rooms || []);
+    }
+
+    function getBookings() {
+        return clone(state.bookingsById || {});
+    }
+
+    function getUsers() {
+        return clone(state.users || []);
+    }
+
+    function getPersonalEvents() {
+        const userKey = getUserKey();
+        if (!userKey) return {};
+        ensurePersonalSeedForUser(userKey);
+        return state.personalEventsByUser[userKey] || {};
+    }
+
+    function getEventScopes() {
+        const userKey = getUserKey();
+        return {
+            userKey,
+            institutionalEvents: state.institutionalEvents,
+            personalEvents: userKey ? (state.personalEventsByUser[userKey] || {}) : {}
+        };
+    }
+
+    function getTodayIso() {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function isDateAllowed(dateStr) {
+        return typeof dateStr === 'string' && dateStr >= getTodayIso();
+    }
+
+    function getUser() {
+        return clone(state.user);
+    }
+
+    function setUser(userData) {
+        state.user = { ...state.user, ...userData };
+        const userKey = getUserKey();
+        if (userKey) ensurePersonalSeedForUser(userKey);
+        saveState();
+        return clone(state.user);
+    }
+
+    function getEvents() {
+        const { institutionalEvents, personalEvents } = getEventScopes();
+        return clone({
+            ...institutionalEvents,
+            ...personalEvents
+        });
+    }
+
+    function getAssistantConversation(userKey = getUserKey()) {
+        if (!userKey) return [];
+        const conversations = state.assistantConversationsByUser || {};
+        return clone(normalizeAssistantMessages(conversations[userKey]));
+    }
+
+    function setAssistantConversation(messages, userKey = getUserKey()) {
+        if (!userKey) return [];
+        state.assistantConversationsByUser[userKey] = normalizeAssistantMessages(messages);
+        saveState();
+        return clone(state.assistantConversationsByUser[userKey]);
+    }
+
+    function appendAssistantConversation(messageEntry, userKey = getUserKey()) {
+        if (!userKey) return [];
+        const existing = normalizeAssistantMessages(state.assistantConversationsByUser[userKey]);
+        existing.push({
+            role: messageEntry?.role === 'assistant' ? 'assistant' : 'user',
+            message: String(messageEntry?.message || ''),
+            createdAt: messageEntry?.createdAt || new Date().toISOString(),
+            questionId: messageEntry?.questionId || null
+        });
+        state.assistantConversationsByUser[userKey] = existing;
+        saveState();
+        return clone(existing);
+    }
+
+    function clearAssistantConversation(userKey = getUserKey()) {
+        if (!userKey || !state.assistantConversationsByUser[userKey]) return false;
+        state.assistantConversationsByUser[userKey] = [];
+        saveState();
+        return true;
+    }
+
+    // create a new event in either personal or institutional event storage
+    function addEvent(date, eventData) {
+        if (!isDateAllowed(date)) return null;
+
+        const targetIsPersonal = eventData.type === 'personal';
+        const targetUserKey = getUserKey();
+        const targetStore = targetIsPersonal && targetUserKey
+            ? (state.personalEventsByUser[targetUserKey] || (state.personalEventsByUser[targetUserKey] = {}))
+            : state.institutionalEvents;
+
+        if (!targetStore[date]) targetStore[date] = [];
+        const created = {
+            id: eventData.id || `ev-${nextEventId++}`,
+            title: eventData.title,
+            type: eventData.type || 'optional',
+            dashboardVisible: !!eventData.dashboardVisible,
+            visibleTo: eventData.visibleTo || '',
+            startTime: eventData.startTime || '',
+            endTime: eventData.endTime || '',
+            location: eventData.location || '',
+            notes: eventData.notes || ''
+        };
+        targetStore[date].push(created);
+        saveState();
+        return clone(created);
+    }
+
+    function updateEvent(eventId, updatedData) {
+        const userKey = getUserKey();
+        const stores = [state.institutionalEvents];
+        if (userKey && state.personalEventsByUser[userKey]) {
+            stores.push(state.personalEventsByUser[userKey]);
+        }
+
+        let existingStore = null;
+        let existingDate = null;
+        let eventIndex = -1;
+
+        stores.forEach((store) => {
+            Object.keys(store).forEach((dateKey) => {
+                const idx = store[dateKey].findIndex((ev) => ev.id === eventId);
+                if (idx !== -1) {
+                    existingStore = store;
+                    existingDate = dateKey;
+                    eventIndex = idx;
+                }
+            });
+        });
+
+        if (!existingStore || !existingDate || eventIndex === -1) return null;
+
+        const current = existingStore[existingDate][eventIndex];
+        const targetDate = updatedData.date || existingDate;
+        if (!isDateAllowed(targetDate)) return null;
+
+        const updated = {
+            ...current,
+            ...updatedData,
+            id: eventId
+        };
+        delete updated.date;
+
+        const sourceIsPersonal = existingStore !== state.institutionalEvents;
+        const targetIsPersonal = updated.type === 'personal';
+
+        if (sourceIsPersonal && !targetIsPersonal) {
+            existingStore[existingDate].splice(eventIndex, 1);
+            if (existingStore[existingDate].length === 0) delete existingStore[existingDate];
+            if (!state.institutionalEvents[targetDate]) state.institutionalEvents[targetDate] = [];
+            state.institutionalEvents[targetDate].push(updated);
+        } else if (!sourceIsPersonal && targetIsPersonal) {
+            existingStore[existingDate].splice(eventIndex, 1);
+            if (existingStore[existingDate].length === 0) delete existingStore[existingDate];
+            const personalStore = userKey ? (state.personalEventsByUser[userKey] || (state.personalEventsByUser[userKey] = {})) : state.institutionalEvents;
+            if (!personalStore[targetDate]) personalStore[targetDate] = [];
+            personalStore[targetDate].push(updated);
+        } else if (targetDate === existingDate) {
+            existingStore[existingDate][eventIndex] = updated;
+        } else {
+            existingStore[existingDate].splice(eventIndex, 1);
+            if (existingStore[existingDate].length === 0) delete existingStore[existingDate];
+            if (!existingStore[targetDate]) existingStore[targetDate] = [];
+            existingStore[targetDate].push(updated);
+        }
+
+        saveState();
+        return clone(updated);
+    }
+
+    // remove an event by id from whichever store contains it
+    function deleteEvent(eventId) {
+        let deleted = false;
+        const stores = [state.institutionalEvents];
+        const userKey = getUserKey();
+        if (userKey && state.personalEventsByUser[userKey]) {
+            stores.push(state.personalEventsByUser[userKey]);
+        }
+
+        stores.forEach((store) => {
+            Object.keys(store).forEach((dateKey) => {
+                const before = store[dateKey].length;
+                store[dateKey] = store[dateKey].filter((ev) => ev.id !== eventId);
+                if (store[dateKey].length !== before) deleted = true;
+                if (store[dateKey].length === 0) delete store[dateKey];
+            });
+        });
+
+        if (deleted) saveState();
+        return deleted;
+    }
+
+    // Notifications helpers (persisted per user in state.notificationsByUser)
+    // get the current user's notifications
+    function getNotifications() {
+        const s = getState();
+        const userKey = getNotificationUserKey();
+        return clone(Array.isArray(s.notificationsByUser?.[userKey]) ? s.notificationsByUser[userKey] : []);
+    }
+
+    // add a new notification for the current user and save state
+    function addNotification(payload) {
+        const stateLocal = getState();
+        const userKey = getNotificationUserKey();
+        const notifications = getNotificationBucket(stateLocal, userKey);
+        const id = `nt-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const note = {
+            id,
+            type: String(payload?.type || 'info'),
+            message: String(payload?.message || ''),
+            data: payload?.data || null,
+            unread: payload?.unread !== false,
+            createdAt: new Date().toISOString()
+        };
+        notifications.unshift(note);
+        setState(stateLocal);
+        return clone(note);
+    }
+
+    function markAllNotificationsRead() {
+        const stateLocal = getState();
+        const userKey = getNotificationUserKey();
+        const notifications = getNotificationBucket(stateLocal, userKey);
+        stateLocal.notificationsByUser[userKey] = notifications.map(n => ({ ...n, unread: false }));
+        setState(stateLocal);
+        return true;
+    }
+
+    function clearNotifications() {
+        const stateLocal = getState();
+        const userKey = getNotificationUserKey();
+        getNotificationBucket(stateLocal, userKey);
+        stateLocal.notificationsByUser[userKey] = [];
+        setState(stateLocal);
+        return true;
+    }
+    return {
+        getState,
+        setState,
+        getUser,
+        setUser,
+        getUsers,
+        getRooms,
+        getBookings,
+        getEvents,
+        getAssistantConversation,
+        setAssistantConversation,
+        appendAssistantConversation,
+        clearAssistantConversation,
+        addEvent,
+        updateEvent,
+        deleteEvent,
+        // Notifications
+        getNotifications,
+        addNotification,
+        markAllNotificationsRead,
+        clearNotifications
+    };
+})();
+window.service = service;
