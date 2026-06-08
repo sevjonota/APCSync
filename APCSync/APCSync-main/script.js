@@ -442,6 +442,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const eventPhotoCache = {};
     let selectedEventPhotos = [];
     let selectedDefaultPhotoKey = null;
+    let invitedUsers = []; // Track invited users for events
+    const invitationDetailsCache = {}; // Cache for invitation details
 
     // Default themes switched to photo backgrounds (placeholder public images).
     // Replace these `src` values with local image paths if you prefer bundling assets.
@@ -1397,6 +1399,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         selectedEventPhotos = [];
         selectedDefaultPhotoKey = null;
         clearDefaultPhotoSelection();
+        
+        // Reset invited users
+        invitedUsers = [];
+        const invitedDiv = document.getElementById('event-invited-users');
+        if (invitedDiv) invitedDiv.innerHTML = '';
 
         calendarEventModal.classList.remove('hidden');
         
@@ -1422,6 +1429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function closeCalendarModalHandler() {
+        invitedUsers = []; // Clear invited users when closing modal
         calendarEventModal.classList.add('hidden');
         calendarEventModal.dataset.isEdit = 'false';
         delete calendarEventModal.dataset.editEventId;
@@ -1925,6 +1933,105 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
 
+        // Render Invitations for student/faculty dashboard
+        const invitationsContainer = document.getElementById('student-invitations');
+        if (invitationsContainer) {
+            const userInvitations = window.service && typeof window.service.getCurrentUserInvitations === 'function' 
+                ? window.service.getCurrentUserInvitations() 
+                : [];
+
+            if (userInvitations && userInvitations.length > 0) {
+                invitationsContainer.innerHTML = userInvitations.map(invitation => {
+                    // Store invitation details for modal
+                    invitationDetailsCache[invitation.id] = invitation;
+                    const bgPhoto = invitation.photos && invitation.photos.length > 0 ? invitation.photos[0].src : null;
+                    const bgStyle = bgPhoto 
+                        ? `background-image: url('${bgPhoto}'); background-size: cover; background-position: center;`
+                        : '';
+                    return `
+                        <div class="card" style="margin-bottom:1rem; cursor:pointer; overflow:hidden; position:relative; ${bgStyle}" data-invitation-id="${invitation.id}">
+                            <div style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.92); backdrop-filter:blur(2px); padding:1rem; display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+                                <div style="flex: 1;">
+                                    <strong>${invitation.eventTitle || 'Untitled event'}</strong>
+                                    <div style="margin-top:0.5rem; color:var(--text-secondary); font-size:0.9rem;">
+                                        <div><strong>Invited by:</strong> ${invitation.createdByUserName || 'Unknown'} (${invitation.createdByUserEmail || 'unknown@apc.edu.ph'})</div>
+                                        <div><strong>Event Date:</strong> ${formatDateLabel(invitation.eventDate)}</div>
+                                        <div><strong>Time:</strong> ${formatTimeLabel(invitation.startTime)} - ${formatTimeLabel(invitation.endTime)}</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:0.5rem; flex-shrink:0;" onclick="event.stopPropagation();">
+                                    <button class="btn-blue btn-sm" data-accept-invitation="${invitation.id}">Accept</button>
+                                    <button class="btn-outline btn-sm" data-decline-invitation="${invitation.id}">Decline</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Attach click handlers to invitation cards to show details
+                const invitationCards = invitationsContainer.querySelectorAll('[data-invitation-id]');
+                invitationCards.forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        if (e.target.closest('button')) return; // Don't open modal when clicking buttons
+                        const invitationId = card.dataset.invitationId;
+                        showInvitationDetailsModal(invitationId);
+                    });
+                });
+
+                // Attach click handlers to accept/decline buttons
+                const acceptButtons = invitationsContainer.querySelectorAll('[data-accept-invitation]');
+                const declineButtons = invitationsContainer.querySelectorAll('[data-decline-invitation]');
+
+                acceptButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const invitationId = btn.dataset.acceptInvitation;
+                        const invitation = invitationDetailsCache[invitationId];
+                        if (!invitation) return;
+
+                        // Add event to personal calendar
+                        const eventData = {
+                            id: invitation.eventId,
+                            title: invitation.eventTitle,
+                            type: 'personal',
+                            startTime: invitation.startTime,
+                            endTime: invitation.endTime,
+                            location: invitation.location,
+                            notes: invitation.notes
+                        };
+                        window.service.addEvent(invitation.eventDate, eventData);
+
+                        // Remove invitation
+                        const currentUser = window.service && window.service.getUser ? window.service.getUser() : null;
+                        if (currentUser && currentUser.email) {
+                            window.service.removeInvitation(invitationId, currentUser.email);
+                        }
+
+                        showNotice('Invitation accepted! Added to your schedule.', 'success');
+                        refreshViews();
+                    });
+                });
+
+                declineButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const invitationId = btn.dataset.declineInvitation;
+
+                        // Remove invitation
+                        const currentUser = window.service && window.service.getUser ? window.service.getUser() : null;
+                        if (currentUser && currentUser.email) {
+                            window.service.removeInvitation(invitationId, currentUser.email);
+                        }
+
+                        showNotice('Invitation declined.', 'success');
+                        refreshViews();
+                    });
+                });
+            } else {
+                invitationsContainer.innerHTML = '<div class="empty-state" style="padding:1rem;"><i class="far fa-envelope"></i><h3>No Invitations</h3><p>You have not been invited to any events yet.</p></div>';
+            }
+        }
+
         // Render Event History for student/faculty dashboard
         const eventHistoryContainer = document.getElementById('student-event-history');
         if (eventHistoryContainer) {
@@ -2011,6 +2118,116 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(closeDetailsModalBtn) closeDetailsModalBtn.addEventListener('click', () => {
         document.getElementById('event-details-modal').classList.add('hidden');
     });
+
+    function showInvitationDetailsModal(invitationId) {
+        const invitation = invitationDetailsCache[invitationId];
+        if (!invitation) return;
+
+        const modalBody = document.getElementById('invitation-details-modal-body');
+        if (modalBody) {
+            // Get the first photo as background if available
+            const bgPhoto = invitation.photos && invitation.photos.length > 0 ? invitation.photos[0].src : null;
+            const eventTime = `${formatTimeLabel(invitation.startTime)} - ${formatTimeLabel(invitation.endTime)}`;
+
+            modalBody.innerHTML = `
+                <div style="text-align: left; width: 100%;">
+                    ${bgPhoto ? `
+                        <div style="
+                            height: 250px;
+                            background-image: url('${bgPhoto}');
+                            background-size: cover;
+                            background-position: center;
+                            border-radius: var(--radius-md);
+                            margin-bottom: 1.5rem;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        "></div>
+                    ` : ''}
+                    <h2 style="color: var(--navy-blue); margin-bottom: 1rem;">${invitation.eventTitle || 'Untitled Event'}</h2>
+                    
+                    <div style="background: var(--bg-alt); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+                        <div style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                            <i class="fas fa-user-circle" style="color: var(--gold); width: 20px;"></i>
+                            <span><strong>Invited by:</strong> ${invitation.createdByUserName || 'Unknown'}</span>
+                        </div>
+                        <div style="margin-bottom: 0.75rem; color: var(--text-secondary);">
+                            <span style="font-size: 0.9rem;">${invitation.createdByUserEmail || 'unknown@apc.edu.ph'}</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                        <i class="far fa-calendar" style="color: var(--gold); width: 20px;"></i>
+                        <span><strong>${formatDateLabel(invitation.eventDate)}</strong></span>
+                    </div>
+                    <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                        <i class="far fa-clock" style="color: var(--gold); width: 20px;"></i>
+                        <span>${eventTime}</span>
+                    </div>
+                    <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary);">
+                        <i class="fas fa-map-marker-alt" style="color: var(--gold); width: 20px;"></i>
+                        <span>${invitation.location || 'TBD'}</span>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Event Details</h4>
+                        <p style="color: var(--text-secondary); line-height: 1.6;">${invitation.notes || 'No description provided.'}</p>
+                    </div>
+
+                    ${invitation.photos && invitation.photos.length > 1 ? `
+                        <div style="margin-top: 1.5rem;">
+                            <h4 style="margin-bottom: 0.75rem; color: var(--text-primary);">Event Photos</h4>
+                            <div class="photo-preview-grid">
+                                ${invitation.photos.map(photo => `<img src="${photo.src}" alt="${photo.name}" class="photo-preview-item" style="cursor:pointer;" onclick="document.getElementById('photo-viewer-image').src='${photo.src}'; document.getElementById('photo-viewer-modal').classList.remove('hidden');">`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <div style="margin-top: 2rem; display: flex; gap: 0.5rem; justify-content:flex-end;">
+                        <button class="btn-outline btn-sm" data-decline-invitation="${invitation.id}">Decline</button>
+                        <button class="btn-blue btn-sm" data-accept-invitation="${invitation.id}">Accept Invitation</button>
+                    </div>
+                </div>
+            `;
+            
+            // Attach event listeners to the buttons in the modal
+            const acceptBtn = modalBody.querySelector('[data-accept-invitation]');
+            const declineBtn = modalBody.querySelector('[data-decline-invitation]');
+
+            if (acceptBtn) {
+                acceptBtn.addEventListener('click', () => {
+                    showNotice('Invitation accepted! Added to your schedule.', 'success');
+                    document.getElementById('invitation-details-modal').classList.add('hidden');
+                });
+            }
+
+            if (declineBtn) {
+                declineBtn.addEventListener('click', () => {
+                    showNotice('Invitation declined.', 'success');
+                    document.getElementById('invitation-details-modal').classList.add('hidden');
+                });
+            }
+
+            document.getElementById('invitation-details-modal').classList.remove('hidden');
+        }
+    }
+
+    const closeInvitationModalBtn = document.getElementById('close-invitation-details-modal');
+    if (closeInvitationModalBtn) {
+        closeInvitationModalBtn.addEventListener('click', () => {
+            document.getElementById('invitation-details-modal').classList.add('hidden');
+        });
+    }
+
+    // Close modal when clicking on the overlay
+    const invitationModal = document.getElementById('invitation-details-modal');
+    if (invitationModal) {
+        invitationModal.addEventListener('click', (e) => {
+            if (e.target === invitationModal) {
+                invitationModal.classList.add('hidden');
+            }
+        });
+    }
 
     function openEditEventModal(eventId) {
         const data = eventDetailsData[eventId];
@@ -2167,6 +2384,51 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.id === 'photo-viewer-modal') closePhotoViewerModal();
     });
 
+    // Handle adding Student User 2 to invitations
+    const btnAddInviteStudent002 = document.getElementById('btn-add-invite-student-002');
+    if (btnAddInviteStudent002) {
+        btnAddInviteStudent002.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Add Student User 2 to invitations
+            const student002 = {
+                id: 'u-student-002',
+                email: 'another@student.apc.edu.ph',
+                name: 'Student User 2'
+            };
+
+            // Check if already invited
+            const alreadyInvited = invitedUsers.some(u => u.id === student002.id);
+            if (!alreadyInvited) {
+                invitedUsers.push(student002);
+            }
+
+            // Render the invited users list
+            const invitedDiv = document.getElementById('event-invited-users');
+            if (invitedDiv) {
+                invitedDiv.innerHTML = '';
+                invitedUsers.forEach((user, idx) => {
+                    const tag = document.createElement('div');
+                    tag.style.cssText = 'display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--blue-50); border: 1px solid var(--blue-200); border-radius: var(--radius-sm); font-size: 0.875rem;';
+                    tag.innerHTML = `
+                        <span><strong>${user.name}</strong> (${user.email})</span>
+                        <button type="button" data-user-id="${user.id}" class="btn-remove-invite" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0; font-weight: bold;">×</button>
+                    `;
+                    invitedDiv.appendChild(tag);
+                });
+
+                // Add remove listeners
+                invitedDiv.querySelectorAll('.btn-remove-invite').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const userId = e.target.dataset.userId;
+                        invitedUsers = invitedUsers.filter(u => u.id !== userId);
+                        // Re-render
+                        btnAddInviteStudent002.click();
+                    });
+                });
+            }
+        });
+    }
+
     async function saveEventHandler(e) {
         e.preventDefault();
         
@@ -2266,6 +2528,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
 
                 addAppNotification(isEdit ? 'event.updated' : 'event.created', `${isEdit ? 'Event updated' : 'Event created'}: ${ev.title} (${formatDateLabel(ev.date)} ${formatTimeLabel(ev.startTime)} - ${formatTimeLabel(ev.endTime)})`, { eventId: ev.id });
+
+                // Send invitations if any users were invited
+                if (invitedUsers && invitedUsers.length > 0) {
+                    invitedUsers.forEach(invitedUser => {
+                        window.service.addInvitation(
+                            invitedUser.email,
+                            ev.id,
+                            ev.title,
+                            currentUser.id,
+                            currentUser.email,
+                            currentUser.name,
+                            ev.date,
+                            {
+                                startTime: ev.startTime,
+                                endTime: ev.endTime,
+                                location: ev.location,
+                                notes: ev.notes || ev.description,
+                                photos: eventPhotoCache[ev.id] || []
+                            }
+                        );
+                    });
+                }
             }
 
             await refreshViews();

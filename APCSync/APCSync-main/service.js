@@ -181,7 +181,8 @@ const service = (() => {
         personalEventsByUser: {},
         seededPersonalUsers: {},
         assistantConversationsByUser: {},
-        notificationsByUser: {}
+        notificationsByUser: {},
+        invitationsByUser: {}
     };
 
     // normalize raw state into a valid state object with defaults
@@ -220,7 +221,10 @@ const service = (() => {
                     const userKey = String((nextState.user && nextState.user.email) || initialState.user.email || '').trim().toLowerCase();
                     const legacyNotifications = Array.isArray(nextState.notifications) ? nextState.notifications : [];
                     return userKey ? { [userKey]: legacyNotifications } : {};
-                })()
+                })(),
+            invitationsByUser: nextState.invitationsByUser && typeof nextState.invitationsByUser === 'object'
+                ? nextState.invitationsByUser
+                : {}
         };
     }
 
@@ -631,6 +635,69 @@ const service = (() => {
         setState(stateLocal);
         return true;
     }
+
+    // Invitations helpers (persisted per user in state.invitationsByUser)
+    // get invitations for a specific user
+    function getInvitationsForUser(userEmail) {
+        const s = getState();
+        const userKey = String(userEmail || '').trim().toLowerCase();
+        return clone(Array.isArray(s.invitationsByUser?.[userKey]) ? s.invitationsByUser[userKey] : []);
+    }
+
+    // add an invitation for a user
+    function addInvitation(invitedUserEmail, eventId, eventTitle, createdByUserId, createdByUserEmail, createdByUserName, eventDate, eventDetails = {}) {
+        const stateLocal = getState();
+        const userKey = String(invitedUserEmail || '').trim().toLowerCase();
+        if (!userKey) return null;
+
+        if (!stateLocal.invitationsByUser) stateLocal.invitationsByUser = {};
+        if (!Array.isArray(stateLocal.invitationsByUser[userKey])) {
+            stateLocal.invitationsByUser[userKey] = [];
+        }
+
+        const invitation = {
+            id: `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            eventId,
+            eventTitle,
+            createdByUserId,
+            createdByUserEmail,
+            createdByUserName,
+            eventDate,
+            startTime: eventDetails.startTime || '',
+            endTime: eventDetails.endTime || '',
+            location: eventDetails.location || '',
+            notes: eventDetails.notes || '',
+            photos: Array.isArray(eventDetails.photos) ? eventDetails.photos : [],
+            createdAt: new Date().toISOString()
+        };
+
+        stateLocal.invitationsByUser[userKey].push(invitation);
+        setState(stateLocal);
+        return clone(invitation);
+    }
+
+    // get current user's invitations
+    function getCurrentUserInvitations() {
+        const userKey = getUserKey();
+        return userKey ? getInvitationsForUser(userKey) : [];
+    }
+
+    // remove an invitation for a user
+    function removeInvitation(invitationId, userEmail) {
+        const stateLocal = getState();
+        const userKey = String(userEmail || '').trim().toLowerCase();
+        if (!userKey || !stateLocal.invitationsByUser?.[userKey]) return false;
+
+        const invitations = stateLocal.invitationsByUser[userKey];
+        const index = invitations.findIndex(inv => inv.id === invitationId);
+        if (index !== -1) {
+            invitations.splice(index, 1);
+            setState(stateLocal);
+            return true;
+        }
+        return false;
+    }
+
     return {
         getState,
         setState,
@@ -651,7 +718,12 @@ const service = (() => {
         getNotifications,
         addNotification,
         markAllNotificationsRead,
-        clearNotifications
+        clearNotifications,
+        // Invitations
+        getInvitationsForUser,
+        addInvitation,
+        getCurrentUserInvitations,
+        removeInvitation
     };
 })();
 window.service = service;

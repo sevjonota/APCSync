@@ -284,6 +284,19 @@
                         </div>
                     </div>
 
+                    <div id="student-invitations-card" class="split-card collapsible-card expanded" style="margin-bottom:1.5rem;">
+                        <div class="split-card-header">
+                            <div>
+                                <h4>Invitations</h4>
+                                <p class="card-desc">Events you've been invited to by other students.</p>
+                            </div>
+                            <button type="button" class="btn-outline btn-sm collapsible-toggle" data-target="student-invitations-body">Collapse</button>
+                        </div>
+                        <div id="student-invitations-body" class="collapsible-body">
+                            <div id="student-invitations"></div>
+                        </div>
+                    </div>
+
                     <div id="student-event-history-card" class="split-card collapsible-card expanded" style="margin-bottom:1.5rem;">
                         <div class="split-card-header">
                             <div>
@@ -1021,6 +1034,19 @@
             </div>
         </div>
 
+        <!-- INVITATION DETAILS MODAL -->
+        <div id="invitation-details-modal" class="modal-overlay hidden">
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h3>Event Invitation Details</h3>
+                    <button class="modal-close" id="close-invitation-details-modal"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body" id="invitation-details-modal-body">
+                    <!-- Details will be injected here -->
+                </div>
+            </div>
+        </div>
+
         <!-- PHOTO VIEWER MODAL -->
         <div id="photo-viewer-modal" class="modal-overlay hidden">
             <div class="modal-content photo-viewer-content">
@@ -1067,6 +1093,14 @@
                                 <option value="optional">Optional</option>
                                 <option value="personal">Personal</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="event-invite-students">Invite Students (Optional)</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="event-invite-students" placeholder="Select students to invite..." readonly style="flex: 1; cursor: pointer;">
+                                <button type="button" class="btn-outline" id="btn-add-invite-student-002">Add Student User 2</button>
+                            </div>
+                            <div id="event-invited-users" style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;"></div>
                         </div>
                         <div id="event-invite-fields">
                             <div id="event-visibility-scope-fields">

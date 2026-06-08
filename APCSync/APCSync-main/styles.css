@@ -553,6 +553,15 @@ h1 { font-size: 1.875rem; font-weight: 700; color: var(--text-primary); margin-b
 .subtitle { color: var(--text-secondary); font-size: 1rem; margin-bottom: 2rem; }
 .card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); padding: 1.5rem; }
 
+/* Interactive card hover effects for invitations and event history */
+.card[data-invitation-id]:hover,
+.card[data-event-details-link]:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--blue-400);
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
 /* ===================================================================
    Enforce rounded geometry and consistent Soft UI depth across
    common components to remove sharp rectangles and default browser
